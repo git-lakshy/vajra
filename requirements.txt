@@ -1,0 +1,29 @@
+numpy>=1.24
+scipy>=1.10
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+pillow>=10.0
+opencv-python-headless>=4.8
+
+# --- real-data adapters (all verified working on Windows) ---
+eccodes>=2.44          # bundled DLL wheel; MRMS GRIB2 decode
+cfgrib>=0.9.15
+xarray>=2024.1
+netcdf4>=1.6
+h5netcdf>=1.3
+h5py>=3.10             # SEVIR HDF5 + GOES netCDF
+pyproj>=3.6            # GOES geos projection -> lat/lon
+
+# --- learned hazard heads ---
+lightgbm>=4.3
+scikit-learn>=1.4
+
+# --- verification plots ---
+matplotlib>=3.8
+
+# --- dev ---
+pytest>=8.0
+
+# optional
+# zarr>=2.16          # production slab store

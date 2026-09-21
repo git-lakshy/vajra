@@ -1,0 +1,35 @@
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv*/
+.venv-test/
+
+# --- data (multi-GB; re-downloadable) ---
+data/
+
+# --- logs / transient ---
+*.log
+*.tmp
+server_test*.log
+verif_run*.log
+mrms_dl.log
+sevir_dl.log
+goes_dl.log
+
+# --- local dashboard artifacts ---
+docs/verification/*.png
+
+# --- secrets ---
+.env
+
+# --- local docs / dev tooling (on disk, not part of the product) ---
+PROJECT.md
+PROJECT.html
+PROJECT.pdf
+projectreq.md
+session-sihbuild.md
+mdis/
+docs/
+scripts/
+tests/

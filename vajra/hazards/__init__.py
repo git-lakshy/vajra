@@ -1,0 +1,1 @@
+"""Hazard heads package."""
