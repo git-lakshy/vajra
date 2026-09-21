@@ -720,9 +720,9 @@
     </div>
 
     <!-- Hyperlocal 1x1 km Grid Spec Pill -->
-    <div class="grid-badge" title="Hyperlocal 1 km analytical cell mesh over 512x512 km domain">
+    <div class="grid-badge" title="Hyperlocal 1 km analytical cell resolution">
       <span style="font-size:13px; color:var(--orange-primary);">⊞</span>
-      <span><b>512×512 km</b> Domain · <b>1 km Res</b></span>
+      <span><b>1 km</b> Hyperlocal Resolution</span>
     </div>
 
     <div class="time-badge" id="clockBadge">13:00 IST · +0m</div>
@@ -1038,7 +1038,7 @@ function renderHyperlocalGrid(grid) {
     fillOpacity: 0
   }).addTo(gridLayerGroup);
 
-  domainRect.bindTooltip(`<b>VAJRA 512×512 km Domain</b><br>262,144 analytical 1×1 km cells`, {
+  domainRect.bindTooltip(`<b>VAJRA Surveillance Domain</b><br>1×1 km analytical grid resolution`, {
     sticky: true,
     direction: 'top'
   });
