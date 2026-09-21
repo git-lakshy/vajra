@@ -175,6 +175,21 @@
     border: 1px solid var(--border-main);
   }
 
+  .grid-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    background: var(--bg-subtle);
+    color: var(--text-main);
+    border: 1px solid var(--border-main);
+    white-space: nowrap;
+  }
+  .grid-badge b { color: var(--orange-primary); }
+
   .info-btn {
     background: var(--bg-subtle);
     border: 1px solid var(--border-main);
@@ -704,6 +719,12 @@
       <span id="scanStatus">Scans every 5 mins</span>
     </div>
 
+    <!-- Hyperlocal 1x1 km Grid Spec Pill -->
+    <div class="grid-badge" title="Hyperlocal 1 km analytical cell mesh over 512x512 km domain">
+      <span style="font-size:13px; color:var(--orange-primary);">⊞</span>
+      <span><b>512×512 km</b> Domain · <b>1 km Res</b></span>
+    </div>
+
     <div class="time-badge" id="clockBadge">13:00 IST · +0m</div>
     <button class="info-btn" id="dataInfoBtn">Data Feeds ℹ️</button>
   </div>
@@ -746,6 +767,7 @@
       <button class="sensor-btn" data-sensor="ci">❄️ Convective Initiation</button>
       <button class="sensor-btn" data-sensor="bt">🛰️ INSAT Satellite IR</button>
       <button class="sensor-btn active" id="lightningToggleBtn" style="background:#fefce8; color:#ca8a04; border:1px solid #fde047">⚡ Lightning Pins</button>
+      <button class="sensor-btn active" id="gridToggleBtn" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe" title="Toggle 1x1 km Hyperlocal Grid Mesh Overlay">⊞ 1×1 km Grid</button>
     </div>
 
     <!-- Dynamic Legend -->
@@ -929,6 +951,8 @@ let radarOverlay = null;
 let poiLayerGroup = null;
 let cellMarkerGroup = null;
 let lightningLayerGroup = null;
+let gridLayerGroup = null;
+let showGridOverlay = true;
 let activeScenario = "uttarakhand_cloudburst";
 let activeLead = 0;
 let activeSensorType = "refl";
@@ -955,6 +979,20 @@ function initMap() {
   poiLayerGroup = L.layerGroup().addTo(map);
   cellMarkerGroup = L.layerGroup().addTo(map);
   lightningLayerGroup = L.layerGroup().addTo(map);
+  gridLayerGroup = L.layerGroup().addTo(map);
+
+  map.on('zoomend moveend', () => {
+    if (currentState.grid) renderHyperlocalGrid(currentState.grid);
+  });
+
+  map.on('click', (e) => {
+    if (showGridOverlay) {
+      L.popup()
+        .setLatLng(e.latlng)
+        .setContent(`<div style="font-size:11px; line-height:1.4;"><b>Hyperlocal 1×1 km Cell</b><br>Analytical Resolution: <b>1.0 km²</b><br>Center: ${e.latlng.lat.toFixed(4)}°N, ${e.latlng.lng.toFixed(4)}°E</div>`)
+        .openOn(map);
+    }
+  });
 }
 
 // Zoom smoothly to a station and open its popup
@@ -976,6 +1014,75 @@ function zoomToStation(name) {
 function zoomToCell(lat, lon) {
   if (map) {
     map.flyTo([lat, lon], 10, { animate: true, duration: 1.0 });
+  }
+}
+
+// Render Hyperlocal 1x1 km Grid Mesh and Domain Boundary
+function renderHyperlocalGrid(grid) {
+  if (!gridLayerGroup) return;
+  gridLayerGroup.clearLayers();
+  if (!showGridOverlay || !grid || !grid.bounds) return;
+
+  const b = grid.bounds; // [[lat_bottom, lon_left], [lat_top, lon_right]]
+  const latMin = b[0][0];
+  const lonMin = b[0][1];
+  const latMax = b[1][0];
+  const lonMax = b[1][1];
+
+  // 1. Draw 512x512 km Domain Bounding Box with dashed border
+  const domainRect = L.rectangle(b, {
+    color: '#ea580c',
+    weight: 2,
+    dashArray: '6, 6',
+    fillColor: 'transparent',
+    fillOpacity: 0
+  }).addTo(gridLayerGroup);
+
+  domainRect.bindTooltip(`<b>VAJRA 512×512 km Domain</b><br>262,144 analytical 1×1 km cells`, {
+    sticky: true,
+    direction: 'top'
+  });
+
+  // Calculate 1 km spacing in degrees
+  const dlat1km = 1.0 / 110.574;
+  const clat = (latMin + latMax) / 2;
+  const dlon1km = 1.0 / (111.320 * Math.cos(clat * Math.PI / 180));
+
+  const zoom = map.getZoom();
+  let stepKm = 25;
+  if (zoom >= 11) stepKm = 1;       // 1 km fine cell mesh
+  else if (zoom >= 9) stepKm = 5;   // 5 km intermediate grid
+  else if (zoom >= 8) stepKm = 10;  // 10 km sub-grid
+
+  const stepLat = stepKm * dlat1km;
+  const stepLon = stepKm * dlon1km;
+
+  const isFine = stepKm === 1;
+  const isMed = stepKm === 5;
+  const lineStyle = {
+    color: isFine ? 'rgba(234, 88, 12, 0.45)' : (isMed ? 'rgba(234, 88, 12, 0.25)' : 'rgba(71, 85, 105, 0.2)'),
+    weight: isFine ? 1 : 1,
+    dashArray: isFine ? null : '3, 4',
+    interactive: false
+  };
+
+  const mapBounds = map.getBounds();
+  const drawLatMin = Math.max(latMin, mapBounds.getSouth() - stepLat);
+  const drawLatMax = Math.min(latMax, mapBounds.getNorth() + stepLat);
+  const drawLonMin = Math.max(lonMin, mapBounds.getWest() - stepLon);
+  const drawLonMax = Math.min(lonMax, mapBounds.getEast() + stepLon);
+
+  // Lat lines
+  for (let lat = latMin; lat <= latMax + 1e-5; lat += stepLat) {
+    if (lat >= drawLatMin && lat <= drawLatMax) {
+      L.polyline([[lat, Math.max(lonMin, drawLonMin)], [lat, Math.min(lonMax, drawLonMax)]], lineStyle).addTo(gridLayerGroup);
+    }
+  }
+  // Lon lines
+  for (let lon = lonMin; lon <= lonMax + 1e-5; lon += stepLon) {
+    if (lon >= drawLonMin && lon <= drawLonMax) {
+      L.polyline([[Math.max(latMin, drawLatMin), lon], [Math.min(latMax, drawLatMax), lon]], lineStyle).addTo(gridLayerGroup);
+    }
   }
 }
 
@@ -1005,6 +1112,7 @@ function updateMapDomain(grid, pois) {
       marker.on('click', () => zoomToStation(name));
     });
   }
+  renderHyperlocalGrid(grid);
 }
 
 // Update Raster Overlay
@@ -1355,9 +1463,9 @@ function setupEvents() {
   });
 
   // Sensor Modality Buttons
-  document.querySelectorAll('.sensor-btn:not(#lightningToggleBtn)').forEach(btn => {
+  document.querySelectorAll('.sensor-btn[data-sensor]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.sensor-btn:not(#lightningToggleBtn)').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sensor-btn[data-sensor]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       activeSensorType = btn.dataset.sensor;
       
@@ -1385,6 +1493,16 @@ function setupEvents() {
       lightningLayerGroup.clearLayers();
     } else if (currentState.strokes) {
       renderState(currentState);
+    }
+  });
+
+  // Hyperlocal 1x1 km Grid Toggle
+  document.getElementById('gridToggleBtn').addEventListener('click', (e) => {
+    showGridOverlay = !showGridOverlay;
+    e.target.classList.toggle('active', showGridOverlay);
+    e.target.style.opacity = showGridOverlay ? '1' : '0.5';
+    if (currentState.grid) {
+      renderHyperlocalGrid(currentState.grid);
     }
   });
 
