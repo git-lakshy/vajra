@@ -726,7 +726,7 @@
     <div class="map-floating-panel">
       <div class="playback-controls">
         <button class="icon-btn" id="playBtn" title="Play/Pause Scan Replay">▶</button>
-        <button class="icon-btn" id="stepBtn" title="Step Next Cycle (5-min)">⏭</button>
+        <button class="icon-btn" id="stepBtn" title="Step Next Scan (5-min)">⏭</button>
       </div>
       <div class="timeline-leads">
         <button class="lead-btn active" data-lead="0">Live Obs</button>
@@ -800,7 +800,7 @@
         <div class="hazard-box" id="box_lightning">
           <div class="hazard-box-name">Lightning Jump</div>
           <div class="hazard-box-val" id="val_lightning">--%</div>
-          <div class="hazard-box-sub" id="sub_lightning">0 strokes/frame</div>
+          <div class="hazard-box-sub" id="sub_lightning">0 strokes / 5 min</div>
         </div>
       </div>
     </div>
@@ -809,7 +809,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span>📈</span> Multi-Sensor Diagnostic Graphs (Recent Cycles)
+          <span>📈</span> Multi-Sensor Diagnostic Graphs (Recent Scans)
         </div>
         <span class="card-badge">Live Feeds</span>
       </div>
@@ -817,7 +817,7 @@
       <!-- Lightning Trend -->
       <div class="chart-row">
         <div class="chart-header">
-          <span>⚡ Lightning Stroke Rate (strokes/frame)</span>
+          <span>⚡ Lightning Stroke Rate (strokes / 5 min)</span>
           <span class="chart-val" id="graph_strokes_val">--</span>
         </div>
         <svg class="sparkline-svg" id="svg_lightning" preserveAspectRatio="none" viewBox="0 0 100 30"></svg>
@@ -910,8 +910,8 @@
         <b>VAJRA</b> operates on a continuous 5-minute multi-sensor data fusion pipeline modeled directly on Indian meteorological observation standards:
       </p>
       <ul style="padding-left:18px; margin-bottom:10px">
-        <li><b>Doppler Weather Radar (DWR):</b> 5-minute volume scan reflectivity (Composite Max-Z) calibrated to tropical Indian monsoon $Z\text{-}R$ relationships ($Z=300R^{1.4}$).</li>
-        <li><b>INSAT-3D / 3DR Satellite:</b> Thermal Infrared (TIR1, 10.8µm) Brightness Temperature ($T_B$) detecting rapid cloud-top cooling and deep convection overshooting tops ($T_B < -50^\circ\text{C}$).</li>
+        <li><b>Doppler Weather Radar (DWR):</b> 5-minute volume scan reflectivity (Composite Max-Z) calibrated to tropical Indian monsoon Z–R relationships (Z = 300·R<sup>1.4</sup>).</li>
+        <li><b>INSAT-3D / 3DR Satellite:</b> Thermal Infrared (TIR1, 10.8µm) Brightness Temperature (T<sub>b</sub>) detecting rapid cloud-top cooling and deep convection overshooting tops (T<sub>b</sub> below −50°C).</li>
         <li><b>Ground Lightning Networks:</b> IITM/IMD lightning flash telemetry evaluating total stroke density and 2-sigma acceleration jumps.</li>
         <li><b>Orographic Terrain:</b> 1 km SRTM digital elevation grid modeling Himalayan ridge lifting and flash-flood catchment funnels.</li>
       </ul>
@@ -943,14 +943,14 @@ function initMap() {
   const defaultBounds = [[28.02, 75.73], [32.62, 80.33]];
   map = L.map('map', { zoomControl: true, attributionControl: false }).fitBounds(defaultBounds);
 
+  const osmStd = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 16, attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
   const lightGray = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     { maxZoom: 16, attribution: '© Esri, Maxar, Earthstar Geographics' }
-  ).addTo(map);
-  const osmStd = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 16, attribution: '© OpenStreetMap contributors'
-  });
-  L.control.layers({ 'Light (Esri)': lightGray, 'Streets (OSM)': osmStd }).addTo(map);
+  );
+  L.control.layers({ 'Streets (OSM)': osmStd, 'Light (Esri)': lightGray }).addTo(map);
 
   poiLayerGroup = L.layerGroup().addTo(map);
   cellMarkerGroup = L.layerGroup().addTo(map);
@@ -1067,7 +1067,7 @@ function renderState(s) {
 
   // Frame Clock & Time
   const timeStr = s.ts ? s.ts.replace('T', ' ').slice(11, 16) + ' UTC' : '13:00 IST';
-  document.getElementById('clockBadge').textContent = `${timeStr} · Frame ${s.frame}`;
+  document.getElementById('clockBadge').textContent = `${timeStr} · Scan #${s.frame}`;
   document.getElementById('scanStatus').textContent = s.paused ? 'Playback Paused' : 'Scans every 5 mins';
 
   const scName = s.scenario_name || 'Uttarakhand';
@@ -1109,7 +1109,7 @@ function renderState(s) {
   const ltBox = document.getElementById('box_lightning');
   ltBox.className = 'hazard-box ' + (lt && lt.max_prob >= 0.6 ? 'severe' : (lt && lt.max_prob >= 0.35 ? 'warning' : ''));
   const strokesCount = lt ? lt.strokes_this_frame || 0 : (s.qc ? s.qc.strokes_n || 0 : 0);
-  document.getElementById('sub_lightning').textContent = `${strokesCount} strokes · Jump: ${lt && lt.jump_cells > 0 ? 'Active ⚡' : 'Normal'}`;
+  document.getElementById('sub_lightning').textContent = `${strokesCount} strokes/5m · Jump: ${lt && lt.jump_cells > 0 ? 'Active ⚡' : 'Normal'}`;
 
   // Reflectivity Legend Max
   const maxRefl = (s.cells || []).reduce((m, c) => Math.max(m, c.max_refl_dbz || 0), 0);
@@ -1121,7 +1121,7 @@ function renderState(s) {
     const windData = s.history.map(h => h.max_wind);
     const hailData = s.history.map(h => h.max_mesh);
 
-    document.getElementById('graph_strokes_val').textContent = `${strokesData[strokesData.length - 1]} / frame`;
+    document.getElementById('graph_strokes_val').textContent = `${strokesData[strokesData.length - 1]} / 5m`;
     document.getElementById('graph_wind_val').textContent = `${windData[windData.length - 1]} km/h`;
     document.getElementById('graph_hail_val').textContent = `${hailData[hailData.length - 1]} mm`;
 
