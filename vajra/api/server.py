@@ -78,7 +78,7 @@ class LiveState:
         self.latest_leads: dict[int, np.ndarray] = {}
         self.latest_ci: dict[int, np.ndarray] = {}
         self.latest_ens_spread: np.ndarray | None = None
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._stop = threading.Event()
         self.step_once()
 
@@ -103,8 +103,9 @@ class LiveState:
                 self.latest_leads.clear()
                 self.latest_ci.clear()
                 self.latest_ens_spread = None
-                self.step_once()
-            return meta
+        if meta:
+            self.step_once()
+        return meta
 
     def run_forever(self) -> None:
         while not self._stop.is_set():
