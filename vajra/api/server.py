@@ -80,6 +80,7 @@ class LiveState:
         self.latest_ens_spread: np.ndarray | None = None
         self._lock = threading.RLock()
         self._stop = threading.Event()
+        self.history_records: list[dict] = []
         self.step_once()
 
     def step_once(self) -> None:
@@ -92,6 +93,21 @@ class LiveState:
             self.dispatcher.ingest(state)
             if self.auto_dispatch:
                 self.dispatcher.dispatch_approved()
+            max_refl = max([c["max_refl_dbz"] for c in state.cells], default=38.0)
+            max_mesh = max([c["mesh_mm"] for c in state.cells], default=8.0)
+            max_wind = max([c["speed_kmh"] * 1.35 for c in state.cells], default=42.0)
+            strokes_count = len(eng.store.strokes[-1]) if eng.store.strokes else 0
+            ts_label = state.ts[11:16] if state.ts and len(state.ts) >= 16 else f"F{state.frame}"
+            self.history_records.append({
+                "frame": state.frame,
+                "ts": ts_label,
+                "max_refl": round(float(max_refl), 1),
+                "max_mesh": round(float(max_mesh), 1),
+                "max_wind": round(float(max_wind), 1),
+                "strokes": int(strokes_count),
+            })
+            if len(self.history_records) > 20:
+                self.history_records = self.history_records[-20:]
 
     def switch_scenario(self, scenario_id: str) -> dict:
         from ..alerting.dispatcher import AlertDispatcher
@@ -106,6 +122,15 @@ class LiveState:
         if meta:
             self.step_once()
         return meta
+
+    def get_strokes_latlon(self) -> list[list[float]]:
+        out = []
+        if self.engine.store.strokes and self.engine.store.strokes[-1]:
+            from ..grid import grid_xy_to_latlon
+            for sx, sy in self.engine.store.strokes[-1][:80]:
+                lat, lon = grid_xy_to_latlon(sx, sy)
+                out.append([round(float(lat), 4), round(float(lon), 4)])
+        return out
 
     def run_forever(self) -> None:
         while not self._stop.is_set():
@@ -163,6 +188,8 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
             "etas": st.etas,
             "alerts": [{"cell": a["cell"], "hazard": a["hazard"]} for a in st.alerts],
             "verify": st.verify,
+            "strokes": live.get_strokes_latlon(),
+            "history": list(live.history_records),
         }
 
     @app.get("/api/scenarios")
@@ -222,6 +249,21 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
                 if f is None:
                     raise HTTPException(404, "no spread yet")
                 return Response(grid_to_png(f * 6.0), media_type="image/png")
+            if kind == "wind":
+                f = live.engine.store.latest("shear")
+                if f is None:
+                    f = np.zeros((512, 512), dtype=np.float32)
+                return Response(grid_to_png(np.abs(f) * 2200.0), media_type="image/png")
+            if kind == "bt":
+                f = live.engine.store.latest("bt")
+                if f is None:
+                    f = np.full((512, 512), 273.0, dtype=np.float32)
+                return Response(grid_to_png(np.clip((270.0 - f) * 1.1, 0, 75.0)), media_type="image/png")
+            if kind == "mesh":
+                f = live.engine.store.latest("vil")
+                if f is None:
+                    f = np.zeros((512, 512), dtype=np.float32)
+                return Response(grid_to_png(f), media_type="image/png")
         raise HTTPException(400, "unknown kind")
 
     @app.post("/api/pause/{flag}")
