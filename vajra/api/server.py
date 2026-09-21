@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 from ..config import FRAME_MINUTES, LATENCY_BUDGET_S, POIS
 from ..engine import VajraEngine
-from ..grid import latlon_to_grid_xy, make_mesh
+from ..grid import latlon_to_grid_xy
 
 try:
     from PIL import Image
@@ -125,6 +125,8 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
             "latency_s": st.latency_s,
             "latency_budget_s": LATENCY_BUDGET_S,
             "paused": live.paused,
+            "model_version": st.model_version,
+            "qc": st.qc,
             "grid": {"nx": 512, "ny": 512, "dx_km": 1.0,
                      "bounds": [[18.85, 76.82], [23.45, 81.36]]},
             "cells": st.cells,
@@ -153,7 +155,9 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
 
     @app.get("/api/raster/{kind}/{value}")
     def raster(kind: str, value: int) -> Response:
-        """kind in {obs, fcst, ci}; value = lead minutes (fcst/ci) or ignored."""
+        """kind in {obs, fcst, ci}; value = lead minutes (fcst/ci) or ignored.
+        fcst/180 is the Tier-3 blended severe probability (0-1), rendered on
+        the same scale for display."""
         with live._lock:
             if kind == "obs":
                 f = live.engine.store.latest("refl")
@@ -164,6 +168,8 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
                 f = live.latest_leads.get(value)
                 if f is None:
                     raise HTTPException(404, f"no {value}-min forecast")
+                if value == 180:
+                    f = f * 70.0  # probability -> display scale
                 return Response(grid_to_png(f), media_type="image/png")
             if kind == "ci":
                 f = live.latest_ci.get(value)

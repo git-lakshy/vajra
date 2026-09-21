@@ -49,6 +49,14 @@ THRESH = {
 # The MAUSAM study: storms move with the 3.6-5.0 km "driving winds".
 STEERING_WIND_MS = {"u": 12.0, "v": -6.0}
 
+# Hazard-ML fusion: weight on the learned severe-growth probability inside
+# the hail head (max of MESH-map and weight*P_severe). Heuristic pending a
+# fit on Indian label archives (TODO: fit HAIL_ML_WEIGHT by CSI sweep).
+HAIL_ML_WEIGHT = 0.7
+
+# Model version stamped into state + audit log for reproducibility
+MODEL_VERSION = "0.2.0-advanced"
+
 # Hazard demo POIs (villages/towns on the grid) for the countdown clock
 POIS = {
     "Nagpur": (21.15, 79.09),

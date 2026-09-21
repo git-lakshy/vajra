@@ -49,12 +49,17 @@
   <span class="pill" id="framePill">frame —</span>
   <span class="pill" id="latencyPill">latency —</span>
   <span class="pill" id="replayPill">replay</span>
+  <span class="pill" id="qcPill" title="source freshness">sources —</span>
   <div class="tabs">
     <button data-view="district" class="active">District/DM</button>
     <button data-view="aviation">Aviation</button>
     <button data-view="agriculture">Agriculture</button>
   </div>
 </header>
+<div id="safetyBanner" style="background:#3a2a00;color:#ffd54f;padding:5px 14px;font-size:12px;border-bottom:1px solid #6b5200;">
+  ⚠ Research prototype — outputs are <b>decision support, not official warnings</b>.
+  Validate against IMD guidance before any operational use.
+</div>
 <div id="layout">
   <div style="position:relative">
     <div id="map"></div>
@@ -75,6 +80,7 @@
           <option value="fcst30">+30 min nowcast (mean)</option>
           <option value="fcst60">+60 min nowcast (mean)</option>
           <option value="fcst120">+120 min nowcast (mean)</option>
+          <option value="tier3">Tier-3 P(severe) +180 min (blend)</option>
           <option value="ci60">CI probability (+60 min)</option>
           <option value="spread">Ensemble spread (+30 min)</option>
         </select>
@@ -125,9 +131,16 @@
 <script>
 const bounds = [[18.85, 76.82], [23.45, 81.36]];
 const map = L.map('map', { zoomControl: true }).fitBounds(bounds);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap, © CARTO', maxZoom: 12
-}).addTo(map);
+// Key-free basemaps: Esri World Dark Gray (primary) + OSM standard (fallback).
+// (CARTO basemaps now require an API key - removed.)
+const esriDark = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  { attribution: '© Esri, Maxar, Earthstar Geographics', maxZoom: 16 }
+).addTo(map);
+const osmStd = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 16
+});
+L.control.layers({ 'Dark (Esri)': esriDark, 'Streets (OSM)': osmStd }).addTo(map);
 
 let overlay = null, cellLayer = L.layerGroup().addTo(map);
 let currentView = 'district';
@@ -142,7 +155,8 @@ Object.entries(POI).forEach(([n, ll]) => {
 
 const layerUrl = {
   obs: '/api/raster/obs/0', fcst30: '/api/raster/fcst/30', fcst60: '/api/raster/fcst/60',
-  fcst120: '/api/raster/fcst/120', ci60: '/api/raster/ci/60', spread: '/api/raster/spread/0'
+  fcst120: '/api/raster/fcst/120', tier3: '/api/raster/fcst/180',
+  ci60: '/api/raster/ci/60', spread: '/api/raster/spread/0'
 };
 
 function setLayer(key) {
@@ -176,13 +190,18 @@ function render(s) {
   lat.textContent = 'ingest→alert ' + (s.latency_s * 1000).toFixed(0) + ' ms';
   lat.className = 'pill ' + (s.latency_s <= s.latency_budget_s ? 'good' : 'bad');
   document.getElementById('replayPill').textContent = s.paused ? 'paused' : 'replay ×150';
+  const qc = s.qc || {};
+  const qcEl = document.getElementById('qcPill');
+  const qok = ['refl_ok', 'bt_ok', 'mesh_ok'].map(k => qc[k]).filter(Boolean).length;
+  qcEl.textContent = `sources ${qok}/3 · ⚡${qc.strokes_n || 0} · ${s.model_version || ''}`;
+  qcEl.title = 'modalities OK (radar/IR/MESH) · lightning strokes · model version';
 
-  // hazards
+  // hazards (+ ML badge when the trained head is active)
   const hz = s.hazards_summary || {};
   [['lightning', 'hz_lightning'], ['hail', 'hz_hail'], ['downburst', 'hz_downburst'], ['cloudburst', 'hz_cloudburst']]
     .forEach(([k, id]) => {
       const el = document.getElementById(id);
-      el.textContent = hz[k] ? fmtPct(hz[k].max_prob) : '–';
+      el.textContent = (hz[k] ? fmtPct(hz[k].max_prob) : '–') + (hz[k] && hz[k].ml_active ? ' 🤖' : '');
       el.style.color = hz[k] && hz[k].max_prob > .6 ? 'var(--sev)' : (hz[k] && hz[k].max_prob > .3 ? 'var(--acc)' : 'var(--ink)');
       if (k === 'lightning' && hz[k]) el.title = hz[k].strokes_this_frame + ' strokes, ' + hz[k].jump_cells + ' jump cells';
     });
