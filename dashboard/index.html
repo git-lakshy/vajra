@@ -6,20 +6,18 @@
 <title>VAJRA — Convective Weather Early Warning System (0–6h)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
     --bg-page: #f8fafc;
     --bg-surface: #ffffff;
-    --bg-surface-elevated: #ffffff;
     --bg-subtle: #f1f5f9;
     --bg-orange-soft: #fff7ed;
     --bg-orange-subtle: #ffedd5;
     
     --border-main: #e2e8f0;
-    --border-subtle: #cbd5e1;
     --border-orange: #fdba74;
     
     --text-main: #0f172a;
@@ -43,7 +41,6 @@
 
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,7 +49,7 @@
     background-color: var(--bg-page);
     color: var(--text-main);
     line-height: 1.5;
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -63,11 +60,11 @@
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-main);
     height: 60px;
-    padding: 0 20px;
+    padding: 0 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     z-index: 1000;
     box-shadow: var(--shadow-sm);
   }
@@ -75,21 +72,21 @@
   .brand-group {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .brand-logo {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     background: linear-gradient(135deg, var(--orange-vibrant), var(--orange-primary));
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     font-weight: 800;
-    font-size: 20px;
-    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+    font-size: 18px;
+    box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
   }
 
   .brand-title {
@@ -99,21 +96,22 @@
     color: var(--text-main);
   }
 
-  .brand-title span {
-    color: var(--orange-primary);
-  }
-
   .brand-subtitle {
     font-size: 11px;
     color: var(--text-muted);
     font-weight: 500;
   }
 
-  /* Scenario Selector Dropdown */
+  .nav-center {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .scenario-container {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: var(--bg-orange-soft);
     border: 1px solid var(--border-orange);
     border-radius: 8px;
@@ -121,8 +119,8 @@
   }
 
   .scenario-label {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     color: var(--orange-primary);
     white-space: nowrap;
   }
@@ -131,27 +129,20 @@
     background: transparent;
     border: none;
     font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--text-main);
     cursor: pointer;
     outline: none;
-  }
-
-  /* Navigation Pills & Status */
-  .nav-center {
-    display: flex;
-    align-items: center;
-    gap: 12px;
   }
 
   .status-badge {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 5px 12px;
+    padding: 5px 10px;
     border-radius: 9999px;
     background: var(--hazard-green-soft);
     color: #047857;
@@ -169,13 +160,13 @@
 
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-    70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
   }
 
   .time-badge {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-main);
     background: var(--bg-subtle);
@@ -184,7 +175,23 @@
     border: 1px solid var(--border-main);
   }
 
-  /* Sector Role Tabs */
+  .info-btn {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-main);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .info-btn:hover {
+    color: var(--orange-primary);
+    border-color: var(--border-orange);
+    background: var(--bg-orange-soft);
+  }
+
   .role-tabs {
     display: flex;
     background: var(--bg-subtle);
@@ -197,9 +204,9 @@
   .role-btn {
     border: none;
     background: transparent;
-    padding: 6px 12px;
+    padding: 5px 10px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
     border-radius: 6px;
@@ -213,15 +220,14 @@
     box-shadow: var(--shadow-sm);
   }
 
-  /* Layout Body */
+  /* Main Layout */
   #main-layout {
     display: grid;
-    grid-template-columns: 1fr 440px;
+    grid-template-columns: 1fr 450px;
     height: calc(100vh - 60px);
     overflow: hidden;
   }
 
-  /* Map Container & Overlays */
   #map-container {
     position: relative;
     height: 100%;
@@ -233,43 +239,43 @@
     width: 100%;
   }
 
-  /* Map Floating Timeline & Layer Bar */
+  /* Map Controls */
   .map-floating-panel {
     position: absolute;
-    top: 14px;
+    top: 12px;
     left: 60px;
     z-index: 900;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-main);
-    border-radius: 12px;
-    padding: 8px 12px;
+    border-radius: 10px;
+    padding: 6px 10px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     box-shadow: var(--shadow-md);
   }
 
   .playback-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     border-right: 1px solid var(--border-main);
-    padding-right: 12px;
+    padding-right: 10px;
   }
 
   .icon-btn {
     background: var(--bg-subtle);
     border: 1px solid var(--border-main);
     color: var(--text-main);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 13px;
     transition: all 0.15s ease;
   }
 
@@ -281,15 +287,15 @@
 
   .timeline-leads {
     display: flex;
-    gap: 4px;
+    gap: 3px;
   }
 
   .lead-btn {
     background: var(--bg-subtle);
     border: 1px solid var(--border-main);
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
@@ -307,69 +313,73 @@
     color: white;
   }
 
-  /* Floating Layer Selector */
-  .layer-selector {
+  /* Sensor Modality Tabs */
+  .sensor-tabs {
     position: absolute;
-    top: 68px;
+    top: 60px;
     left: 60px;
     z-index: 900;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-main);
-    border-radius: 10px;
-    padding: 6px;
+    border-radius: 8px;
+    padding: 4px;
     display: flex;
-    gap: 4px;
+    gap: 3px;
     box-shadow: var(--shadow-md);
   }
 
-  .layer-btn {
+  .sensor-btn {
     border: none;
     background: transparent;
-    padding: 5px 10px;
-    border-radius: 6px;
+    padding: 4px 8px;
+    border-radius: 5px;
     font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     transition: all 0.15s ease;
   }
 
-  .layer-btn.active {
+  .sensor-btn.active {
     background: var(--bg-orange-soft);
     color: var(--orange-primary);
     border: 1px solid var(--border-orange);
   }
 
-  /* Map Legend */
+  /* Legend */
   #map-legend {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 18px;
+    left: 18px;
     z-index: 900;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-main);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 8px;
+    padding: 8px 12px;
     box-shadow: var(--shadow-md);
-    font-size: 11px;
+    font-size: 10px;
+    width: 250px;
   }
 
   .legend-title {
     font-weight: 700;
     color: var(--text-main);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     display: flex;
     justify-content: space-between;
   }
 
   .legend-bar {
     display: flex;
-    height: 10px;
-    border-radius: 3px;
+    height: 8px;
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .legend-seg { flex: 1; }
@@ -378,25 +388,24 @@
     justify-content: space-between;
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
   }
 
-  /* Right Command Center Sidebar */
+  /* Sidebar */
   #sidebar {
     background: var(--bg-page);
     border-left: 1px solid var(--border-main);
     overflow-y: auto;
-    padding: 16px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
   }
 
   .card {
     background: var(--bg-surface);
     border: 1px solid var(--border-main);
-    border-radius: 12px;
-    padding: 14px;
+    border-radius: 10px;
+    padding: 12px;
     box-shadow: var(--shadow-sm);
   }
 
@@ -404,46 +413,41 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   .card-title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text-main);
     display: flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .card-title .icon {
-    font-size: 16px;
+    gap: 6px;
   }
 
   .card-badge {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--orange-primary);
     background: var(--bg-orange-soft);
     border: 1px solid var(--border-orange);
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 9999px;
   }
 
-  /* 4-Grid Hazard Probability Metric Cards */
+  /* 4-Grid Hazard Tiles */
   .hazard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .hazard-box {
     background: var(--bg-subtle);
     border: 1px solid var(--border-main);
-    border-radius: 10px;
-    padding: 10px 12px;
-    position: relative;
-    overflow: hidden;
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: all 0.2s ease;
   }
 
   .hazard-box.severe {
@@ -457,159 +461,128 @@
   }
 
   .hazard-box-name {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-muted);
     margin-bottom: 2px;
   }
 
   .hazard-box-val {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
     color: var(--text-main);
     font-family: 'JetBrains Mono', monospace;
   }
 
-  .hazard-box.severe .hazard-box-val {
-    color: var(--hazard-red);
-  }
-
-  .hazard-box.warning .hazard-box-val {
-    color: var(--orange-primary);
-  }
+  .hazard-box.severe .hazard-box-val { color: var(--hazard-red); }
+  .hazard-box.warning .hazard-box-val { color: var(--orange-primary); }
 
   .hazard-box-sub {
     font-size: 10px;
     color: var(--text-muted);
-    margin-top: 2px;
+    margin-top: 1px;
   }
 
-  /* Early Warnings / CAP Alerts Section */
-  .alert-action-bar {
+  /* Diagnostic Sparkline Charts */
+  .chart-row {
+    margin-bottom: 8px;
+  }
+
+  .chart-header {
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .btn {
-    font-family: inherit;
-    font-size: 12px;
+    justify-content: space-between;
+    font-size: 10px;
     font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s ease;
+    margin-bottom: 3px;
+    color: var(--text-muted);
   }
 
-  .btn-primary {
-    background: var(--orange-primary);
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: var(--orange-hover);
-  }
-
-  .btn-outline {
-    background: var(--bg-surface);
-    border-color: var(--border-main);
+  .chart-val {
+    font-weight: 700;
     color: var(--text-main);
+    font-family: 'JetBrains Mono', monospace;
   }
 
-  .btn-outline:hover {
+  .sparkline-svg {
+    width: 100%;
+    height: 32px;
     background: var(--bg-subtle);
+    border-radius: 5px;
+    border: 1px solid var(--border-main);
   }
 
+  /* Alerts */
   .alert-card {
-    border-radius: 10px;
+    border-radius: 8px;
     border-left: 4px solid var(--hazard-red);
     background: var(--hazard-red-soft);
     border-top: 1px solid #fee2e2;
     border-right: 1px solid #fee2e2;
     border-bottom: 1px solid #fee2e2;
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
   }
 
   .alert-card.orange {
     border-left-color: var(--orange-primary);
     background: var(--bg-orange-soft);
-    border-top-color: var(--border-orange);
-    border-right-color: var(--border-orange);
-    border-bottom-color: var(--border-orange);
+    border-color: var(--border-orange);
   }
 
   .alert-card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
   .alert-tag {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 2px 5px;
+    border-radius: 3px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
-  .alert-tag.red {
-    background: #ef4444;
-    color: white;
-  }
-
-  .alert-tag.orange {
-    background: var(--orange-primary);
-    color: white;
-  }
+  .alert-tag.red { background: #ef4444; color: white; }
+  .alert-tag.orange { background: var(--orange-primary); color: white; }
 
   .alert-countdown {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--hazard-red);
     font-family: 'JetBrains Mono', monospace;
   }
 
-  .alert-card.orange .alert-countdown {
-    color: var(--orange-primary);
-  }
+  .alert-card.orange .alert-countdown { color: var(--orange-primary); }
 
   .alert-desc {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-main);
     font-weight: 500;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
 
   .alert-meta {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
     display: flex;
     justify-content: space-between;
-    align-items: center;
   }
 
   .cap-download-link {
     color: var(--orange-primary);
     text-decoration: none;
     font-weight: 600;
-    font-size: 11px;
   }
 
-  .cap-download-link:hover {
-    text-decoration: underline;
-  }
-
-  /* Tracked Cells List */
+  /* Interactive Cell and Station List */
   .cell-item {
     background: var(--bg-surface);
     border: 1px solid var(--border-main);
-    border-radius: 8px;
-    padding: 8px 10px;
-    margin-bottom: 6px;
+    border-radius: 7px;
+    padding: 7px 9px;
+    margin-bottom: 5px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -620,74 +593,86 @@
   .cell-item:hover {
     border-color: var(--orange-primary);
     background: var(--bg-orange-soft);
+    transform: translateX(2px);
   }
 
-  .cell-item.severe {
-    border-left: 3px solid var(--hazard-red);
-  }
+  .cell-item.severe { border-left: 3px solid var(--hazard-red); }
 
   .cell-info-primary {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-main);
   }
 
   .cell-info-sub {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
   }
 
-  .cell-badge {
-    font-size: 11px;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-    padding: 3px 6px;
-    border-radius: 6px;
-  }
-
-  /* Sector Advisory Box */
   .advisory-box {
     background: var(--bg-orange-soft);
     border: 1px solid var(--border-orange);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 12px;
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 11px;
     color: #7c2d12;
+    line-height: 1.5;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-card {
+    background: white;
+    border-radius: 12px;
+    max-width: 540px;
+    width: 90%;
+    padding: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  }
+
+  .modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-body {
+    font-size: 12px;
+    color: var(--text-main);
     line-height: 1.6;
   }
 
-  /* Operational Verification Scorecard */
-  .verif-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
+  .modal-body b { color: var(--orange-primary); }
+
+  /* Lightning Pulse Map Icon */
+  .lightning-stroke-marker {
+    background: transparent;
+    border: none;
   }
 
-  .verif-table th {
-    text-align: left;
-    padding: 6px 8px;
-    color: var(--text-muted);
-    font-weight: 600;
-    border-bottom: 1px solid var(--border-main);
+  .lightning-bolt {
+    font-size: 16px;
+    filter: drop-shadow(0 0 4px #eab308);
+    animation: flash 1s infinite alternate;
   }
 
-  .verif-table td {
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border-main);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 500;
+  @keyframes flash {
+    0% { opacity: 0.4; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1.2); }
   }
-
-  .verif-table td.score-gain {
-    color: #047857;
-    font-weight: 700;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
 </head>
 <body>
@@ -697,7 +682,7 @@
   <div class="brand-group">
     <div class="brand-logo">⚡</div>
     <div>
-      <div class="brand-title">VAJRA <span>Operations</span></div>
+      <div class="brand-title">VAJRA</div>
       <div class="brand-subtitle">Convective Weather Early Warning System (0–6h)</div>
     </div>
   </div>
@@ -716,10 +701,11 @@
 
     <div class="status-badge">
       <div class="pulse-dot"></div>
-      <span id="scanStatus">Radar Ingest Active</span>
+      <span id="scanStatus">Scans every 5 mins</span>
     </div>
 
     <div class="time-badge" id="clockBadge">13:00 IST · +0m</div>
+    <button class="info-btn" id="dataInfoBtn">Data Feeds ℹ️</button>
   </div>
 
   <!-- Sector Perspective Tabs -->
@@ -740,7 +726,7 @@
     <div class="map-floating-panel">
       <div class="playback-controls">
         <button class="icon-btn" id="playBtn" title="Play/Pause Scan Replay">▶</button>
-        <button class="icon-btn" id="stepBtn" title="Step Next Cycle (5-min)">⏭</button>
+        <button class="icon-btn" id="stepBtn" title="Step Next Scan (5-min)">⏭</button>
       </div>
       <div class="timeline-leads">
         <button class="lead-btn active" data-lead="0">Live Obs</button>
@@ -752,20 +738,23 @@
       </div>
     </div>
 
-    <!-- Map Layers Toggle -->
-    <div class="layer-selector">
-      <button class="layer-btn active" data-layer="refl">Composite Reflectivity</button>
-      <button class="layer-btn" data-layer="ci">Convective Initiation</button>
-      <button class="layer-btn" data-layer="spread">Ensemble Spread</button>
+    <!-- Multi-Sensor Modality Tabs -->
+    <div class="sensor-tabs">
+      <button class="sensor-btn active" data-sensor="refl">📡 Radar Composite</button>
+      <button class="sensor-btn" data-sensor="wind">🌪️ Wind & Downburst</button>
+      <button class="sensor-btn" data-sensor="mesh">🧊 Hail MESH / VIL</button>
+      <button class="sensor-btn" data-sensor="ci">❄️ Convective Initiation</button>
+      <button class="sensor-btn" data-sensor="bt">🛰️ INSAT Satellite IR</button>
+      <button class="sensor-btn active" id="lightningToggleBtn" style="background:#fefce8; color:#ca8a04; border:1px solid #fde047">⚡ Lightning Pins</button>
     </div>
 
-    <!-- Colormap Legend -->
+    <!-- Dynamic Legend -->
     <div id="map-legend">
       <div class="legend-title">
-        <span>Radar Reflectivity (dBZ)</span>
-        <span style="font-weight:600; color:var(--orange-primary);" id="legendMax">Max: -- dBZ</span>
+        <span id="legendTitle">Radar Reflectivity (dBZ)</span>
+        <span style="color:var(--orange-primary);" id="legendMax">Max: -- dBZ</span>
       </div>
-      <div class="legend-bar">
+      <div class="legend-bar" id="legendBar">
         <div class="legend-seg" style="background:#a6d96a"></div>
         <div class="legend-seg" style="background:#66bd63"></div>
         <div class="legend-seg" style="background:#1a9850"></div>
@@ -776,13 +765,8 @@
         <div class="legend-seg" style="background:#a50026"></div>
         <div class="legend-seg" style="background:#762a83"></div>
       </div>
-      <div class="legend-ticks">
-        <span>15</span>
-        <span>25</span>
-        <span>35</span>
-        <span>45</span>
-        <span>55</span>
-        <span>65+</span>
+      <div class="legend-ticks" id="legendTicks">
+        <span>15</span><span>25</span><span>35</span><span>45</span><span>55</span><span>65+</span>
       </div>
     </div>
   </div>
@@ -793,7 +777,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="icon">📊</span> Convective Hazard Diagnostics
+          <span>📊</span> Convective Hazard Diagnostics
         </div>
         <span class="card-badge" id="hazardRegionBadge">Uttarakhand</span>
       </div>
@@ -816,8 +800,45 @@
         <div class="hazard-box" id="box_lightning">
           <div class="hazard-box-name">Lightning Jump</div>
           <div class="hazard-box-val" id="val_lightning">--%</div>
-          <div class="hazard-box-sub" id="sub_lightning">0 strokes/frame</div>
+          <div class="hazard-box-sub" id="sub_lightning">0 strokes / 5 min</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Multi-Sensor Live Trend Graphs -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>📈</span> Multi-Sensor Diagnostic Graphs (Recent Scans)
+        </div>
+        <span class="card-badge">Live Feeds</span>
+      </div>
+      
+      <!-- Lightning Trend -->
+      <div class="chart-row">
+        <div class="chart-header">
+          <span>⚡ Lightning Stroke Rate (strokes / 5 min)</span>
+          <span class="chart-val" id="graph_strokes_val">--</span>
+        </div>
+        <svg class="sparkline-svg" id="svg_lightning" preserveAspectRatio="none" viewBox="0 0 100 30"></svg>
+      </div>
+
+      <!-- Wind Gust Trend -->
+      <div class="chart-row">
+        <div class="chart-header">
+          <span>🌪️ Surface Downburst Wind Gusts (km/h)</span>
+          <span class="chart-val" id="graph_wind_val">-- km/h</span>
+        </div>
+        <svg class="sparkline-svg" id="svg_wind" preserveAspectRatio="none" viewBox="0 0 100 30"></svg>
+      </div>
+
+      <!-- Hail MESH Trend -->
+      <div class="chart-row">
+        <div class="chart-header">
+          <span>🧊 Maximum Hail Core (MESH mm)</span>
+          <span class="chart-val" id="graph_hail_val">-- mm</span>
+        </div>
+        <svg class="sparkline-svg" id="svg_hail" preserveAspectRatio="none" viewBox="0 0 100 30"></svg>
       </div>
     </div>
 
@@ -825,42 +846,40 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="icon">🚨</span> Early Warning Bulletins
+          <span>🚨</span> Early Warning Bulletins
         </div>
-        <div class="alert-action-bar" style="margin:0">
-          <button class="btn btn-outline" id="capFeedBtn" style="padding:3px 8px; font-size:11px;">Feed</button>
-        </div>
+        <button class="btn btn-outline" id="capFeedBtn" style="padding:2px 7px; font-size:10px;">CAP Feed</button>
       </div>
       <div id="alertsContainer">
-        <div style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px;">
+        <div style="font-size:11px; color:var(--text-muted); text-align:center; padding:10px;">
           Scanning convective cells in domain...
         </div>
       </div>
     </div>
 
-    <!-- Impact & Storm Arrival Countdown -->
+    <!-- Station Arrival Countdown (Interactive click to zoom) -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="icon">⏱️</span> Station Arrival Countdowns
+          <span>⏱️</span> Station Arrival Countdowns
         </div>
-        <span class="card-badge">Cone of Impact</span>
+        <span class="card-badge" style="font-size:9px">Click station to zoom</span>
       </div>
       <div id="etaList">
-        <div style="font-size:12px; color:var(--text-muted); padding:4px 0;">Calculating lead times...</div>
+        <div style="font-size:11px; color:var(--text-muted); padding:4px 0;">Calculating lead times...</div>
       </div>
     </div>
 
-    <!-- Tracked Storm Cells Table -->
+    <!-- Tracked Storm Cells Table (Interactive click to zoom) -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="icon">🌀</span> Tracked Convective Cells
+          <span>🌀</span> Tracked Convective Cells
         </div>
         <span class="card-badge" id="cellCountBadge">0 active</span>
       </div>
       <div id="cellList">
-        <div style="font-size:12px; color:var(--text-muted); padding:4px 0;">No severe storm cells detected.</div>
+        <div style="font-size:11px; color:var(--text-muted); padding:4px 0;">No severe storm cells detected.</div>
       </div>
     </div>
 
@@ -868,7 +887,7 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title">
-          <span class="icon">🛡️</span> Sector Advisory
+          <span>🛡️</span> Sector Advisory
         </div>
         <span class="card-badge" id="activeSectorBadge">Disaster Management</span>
       </div>
@@ -876,51 +895,29 @@
         Loading operational advisory for current sector...
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Forecast Skill & Verification Scorecard -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">
-          <span class="icon">📈</span> Verification Scorecard (+30m)
-        </div>
-        <span class="card-badge">Rolling Metrics</span>
-      </div>
-      <table class="verif-table">
-        <thead>
-          <tr>
-            <th>Metric</th>
-            <th>VAJRA Nowcast</th>
-            <th>Persistence</th>
-            <th>Skill Gain</th>
-          </tr>
-        </thead>
-        <tbody id="verifBody">
-          <tr>
-            <td>CSI @40 dBZ</td>
-            <td>0.682</td>
-            <td>0.412</td>
-            <td class="score-gain">+65.5%</td>
-          </tr>
-          <tr>
-            <td>Probability of Detection (POD)</td>
-            <td>0.814</td>
-            <td>0.540</td>
-            <td class="score-gain">+50.7%</td>
-          </tr>
-          <tr>
-            <td>False Alarm Ratio (FAR)</td>
-            <td>0.198</td>
-            <td>0.380</td>
-            <td class="score-gain">-47.9%</td>
-          </tr>
-          <tr>
-            <td>Fractions Skill Score (8 km)</td>
-            <td>0.845</td>
-            <td>0.518</td>
-            <td class="score-gain">+63.1%</td>
-          </tr>
-        </tbody>
-      </table>
+<!-- Data Ingestion Info Modal -->
+<div class="modal-overlay" id="infoModal">
+  <div class="modal-card">
+    <div class="modal-title">
+      <span>Operational Multi-Sensor Data Feeds</span>
+      <button class="icon-btn" id="closeModalBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:8px">
+        <b>VAJRA</b> operates on a continuous 5-minute multi-sensor data fusion pipeline modeled directly on Indian meteorological observation standards:
+      </p>
+      <ul style="padding-left:18px; margin-bottom:10px">
+        <li><b>Doppler Weather Radar (DWR):</b> 5-minute volume scan reflectivity (Composite Max-Z) calibrated to tropical Indian monsoon Z–R relationships (Z = 300·R<sup>1.4</sup>).</li>
+        <li><b>INSAT-3D / 3DR Satellite:</b> Thermal Infrared (TIR1, 10.8µm) Brightness Temperature (T<sub>b</sub>) detecting rapid cloud-top cooling and deep convection overshooting tops (T<sub>b</sub> below −50°C).</li>
+        <li><b>Ground Lightning Networks:</b> IITM/IMD lightning flash telemetry evaluating total stroke density and 2-sigma acceleration jumps.</li>
+        <li><b>Orographic Terrain:</b> 1 km SRTM digital elevation grid modeling Himalayan ridge lifting and flash-flood catchment funnels.</li>
+      </ul>
+      <p style="font-size:11px; color:var(--text-muted)">
+        Note: The demo engine runs calibrated, physically-governed simulations reproducing historic Indian storm profiles (Uttarakhand Cloudburst, Delhi Squalls, Kolkata Kalbaishakhi) to allow deterministic testing and evaluation.
+      </p>
     </div>
   </div>
 </div>
@@ -931,51 +928,81 @@ let map = null;
 let radarOverlay = null;
 let poiLayerGroup = null;
 let cellMarkerGroup = null;
+let lightningLayerGroup = null;
 let activeScenario = "uttarakhand_cloudburst";
 let activeLead = 0;
-let activeLayerType = "refl";
+let activeSensorType = "refl";
+let showLightningPins = true;
 let activeRole = "district";
 let isPaused = false;
 let currentState = {};
+let currentPois = {};
 
-// Initialize Leaflet Map with a crisp light-theme basemap
+// Initialize Leaflet Map
 function initMap() {
-  // Default bounds for Uttarakhand
   const defaultBounds = [[28.02, 75.73], [32.62, 80.33]];
   map = L.map('map', { zoomControl: true, attributionControl: false }).fitBounds(defaultBounds);
 
-  // CartoDB Positron / OSM Light tile layer for clean contrast
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 16,
-    subdomains: 'abcd'
+  const osmStd = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 16, attribution: '© OpenStreetMap contributors'
   }).addTo(map);
+  const lightGray = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 16, attribution: '© Esri, Maxar, Earthstar Geographics' }
+  );
+  L.control.layers({ 'Streets (OSM)': osmStd, 'Light (Esri)': lightGray }).addTo(map);
 
   poiLayerGroup = L.layerGroup().addTo(map);
   cellMarkerGroup = L.layerGroup().addTo(map);
+  lightningLayerGroup = L.layerGroup().addTo(map);
 }
 
-// Update Map Bounds & Stations when scenario changes
+// Zoom smoothly to a station and open its popup
+function zoomToStation(name) {
+  if (currentPois && currentPois[name]) {
+    const coords = currentPois[name];
+    map.flyTo(coords, 11, { animate: true, duration: 1.0 });
+    
+    // Find the station marker and open tooltip
+    poiLayerGroup.eachLayer(layer => {
+      if (layer.getTooltip() && layer.getTooltip().getContent().includes(name)) {
+        layer.openTooltip();
+      }
+    });
+  }
+}
+
+// Zoom smoothly to a cell
+function zoomToCell(lat, lon) {
+  if (map) {
+    map.flyTo([lat, lon], 10, { animate: true, duration: 1.0 });
+  }
+}
+
+// Update Map Domain & Station Markers
 function updateMapDomain(grid, pois) {
   if (!grid || !grid.bounds) return;
+  currentPois = pois || {};
   const b = grid.bounds;
-  map.fitBounds(b, { padding: [20, 20], maxZoom: 9 });
+  map.fitBounds(b, { padding: [25, 25], maxZoom: 9 });
 
-  // Update station markers
   poiLayerGroup.clearLayers();
   if (pois) {
     Object.entries(pois).forEach(([name, coords]) => {
       const marker = L.circleMarker(coords, {
-        radius: 6,
+        radius: 7,
         color: '#ea580c',
         weight: 2,
         fillColor: '#ffffff',
         fillOpacity: 1
       }).addTo(poiLayerGroup);
 
-      marker.bindTooltip(`<b>${name}</b><br><span style="font-size:10px; color:#64748b;">Monitoring Station</span>`, {
+      marker.bindTooltip(`<b>${name} Station</b><br><span style="font-size:10px; color:#ea580c;">Click to zoom</span>`, {
         direction: 'top',
         offset: [0, -6]
       });
+
+      marker.on('click', () => zoomToStation(name));
     });
   }
 }
@@ -986,21 +1013,51 @@ function updateRadarOverlay(grid) {
   const b = grid.bounds;
 
   let url = '';
-  if (activeLayerType === 'refl') {
+  if (activeSensorType === 'refl') {
     url = activeLead === 0 ? '/api/raster/obs/0' : `/api/raster/fcst/${activeLead}`;
-  } else if (activeLayerType === 'ci') {
+  } else if (activeSensorType === 'wind') {
+    url = '/api/raster/wind/0';
+  } else if (activeSensorType === 'mesh') {
+    url = '/api/raster/mesh/0';
+  } else if (activeSensorType === 'ci') {
     url = '/api/raster/ci/60';
-  } else if (activeLayerType === 'spread') {
-    url = '/api/raster/spread/0';
+  } else if (activeSensorType === 'bt') {
+    url = '/api/raster/bt/0';
   }
 
-  // Cache buster to force fresh frame render
   const fullUrl = `${url}?t=${Date.now()}`;
-
   if (radarOverlay) {
     map.removeLayer(radarOverlay);
   }
   radarOverlay = L.imageOverlay(fullUrl, b, { opacity: 0.76 }).addTo(map);
+}
+
+// Draw Simple SVG Sparkline Chart
+function drawSparkline(svgId, data, color) {
+  const svg = document.getElementById(svgId);
+  if (!svg || !data || data.length < 2) return;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const w = 100;
+  const h = 30;
+  const padding = 3;
+
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - padding - ((val - min) / range) * (h - 2 * padding);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const pathD = `M ${points.join(' L ')}`;
+  const areaD = `M ${points[0]} L ${points.join(' L ')} L ${w},${h} L 0,${h} Z`;
+
+  svg.innerHTML = `
+    <path d="${areaD}" fill="${color}" fill-opacity="0.15" />
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+    <circle cx="${points[points.length - 1].split(',')[0]}" cy="${points[points.length - 1].split(',')[1]}" r="3" fill="${color}" />
+  `;
 }
 
 // Render UI Components
@@ -1010,29 +1067,23 @@ function renderState(s) {
 
   // Frame Clock & Time
   const timeStr = s.ts ? s.ts.replace('T', ' ').slice(11, 16) + ' UTC' : '13:00 IST';
-  document.getElementById('clockBadge').textContent = `${timeStr} · Frame ${s.frame}`;
-  document.getElementById('scanStatus').textContent = s.paused ? 'Playback Paused' : '5-Min Scan Cycle Active';
+  document.getElementById('clockBadge').textContent = `${timeStr} · Scan #${s.frame}`;
+  document.getElementById('scanStatus').textContent = s.paused ? 'Playback Paused' : 'Scans every 5 mins';
 
-  // Update Region Badge
   const scName = s.scenario_name || 'Uttarakhand';
   document.getElementById('hazardRegionBadge').textContent = scName.split(' ')[0];
 
   // Update Hazard Grid
   const hz = s.hazards_summary || {};
   
-  // Cloudburst Box
+  // Cloudburst
   const cb = hz.cloudburst;
   const cbVal = cb ? (cb.max_prob * 100).toFixed(0) + '%' : '12%';
   document.getElementById('val_cloudburst').textContent = cbVal;
   const cbBox = document.getElementById('box_cloudburst');
   cbBox.className = 'hazard-box ' + (cb && cb.max_prob >= 0.6 ? 'severe' : (cb && cb.max_prob >= 0.35 ? 'warning' : ''));
-  if (cb && cb.max_prob >= 0.6) {
-    document.getElementById('sub_cloudburst').textContent = 'Extreme rain core >100 mm/h';
-  } else {
-    document.getElementById('sub_cloudburst').textContent = 'Localized precipitation watch';
-  }
 
-  // Hail Box
+  // Hail
   const hl = hz.hail;
   const hlVal = hl ? (hl.max_prob * 100).toFixed(0) + '%' : '18%';
   document.getElementById('val_hail').textContent = hlVal;
@@ -1041,35 +1092,50 @@ function renderState(s) {
   const maxMesh = (s.cells || []).reduce((m, c) => Math.max(m, c.mesh_mm || 0), 0);
   document.getElementById('sub_hail').textContent = `Max MESH: ${maxMesh.toFixed(0)} mm`;
 
-  // Downburst Box
+  // Downburst
   const db = hz.downburst;
   const dbVal = db ? (db.max_prob * 100).toFixed(0) + '%' : '24%';
   document.getElementById('val_downburst').textContent = dbVal;
   const dbBox = document.getElementById('box_downburst');
   dbBox.className = 'hazard-box ' + (db && db.max_prob >= 0.6 ? 'severe' : (db && db.max_prob >= 0.35 ? 'warning' : ''));
   const maxSpd = (s.cells || []).reduce((m, c) => Math.max(m, c.speed_kmh || 0), 0);
-  document.getElementById('sub_downburst').textContent = `Est. gust: ${(maxSpd * 1.4).toFixed(0)} km/h`;
+  const estGust = (maxSpd * 1.35).toFixed(0);
+  document.getElementById('sub_downburst').textContent = `Est. gust: ${estGust} km/h`;
 
-  // Lightning Box
+  // Lightning
   const lt = hz.lightning;
   const ltVal = lt ? (lt.max_prob * 100).toFixed(0) + '%' : '35%';
   document.getElementById('val_lightning').textContent = ltVal;
   const ltBox = document.getElementById('box_lightning');
   ltBox.className = 'hazard-box ' + (lt && lt.max_prob >= 0.6 ? 'severe' : (lt && lt.max_prob >= 0.35 ? 'warning' : ''));
-  const strokes = lt ? lt.strokes_this_frame || 0 : (s.qc ? s.qc.strokes_n || 0 : 0);
-  document.getElementById('sub_lightning').textContent = `${strokes} strokes · Jump: ${lt && lt.jump_cells > 0 ? 'Active ⚡' : 'Normal'}`;
+  const strokesCount = lt ? lt.strokes_this_frame || 0 : (s.qc ? s.qc.strokes_n || 0 : 0);
+  document.getElementById('sub_lightning').textContent = `${strokesCount} strokes/5m · Jump: ${lt && lt.jump_cells > 0 ? 'Active ⚡' : 'Normal'}`;
 
-  // Max Reflectivity in Legend
+  // Reflectivity Legend Max
   const maxRefl = (s.cells || []).reduce((m, c) => Math.max(m, c.max_refl_dbz || 0), 0);
   document.getElementById('legendMax').textContent = `Max: ${maxRefl > 0 ? maxRefl.toFixed(0) : '--'} dBZ`;
 
-  // Storm Cell Markers on Map
+  // Render Multi-Sensor Trend Charts
+  if (s.history && s.history.length >= 2) {
+    const strokesData = s.history.map(h => h.strokes);
+    const windData = s.history.map(h => h.max_wind);
+    const hailData = s.history.map(h => h.max_mesh);
+
+    document.getElementById('graph_strokes_val').textContent = `${strokesData[strokesData.length - 1]} / 5m`;
+    document.getElementById('graph_wind_val').textContent = `${windData[windData.length - 1]} km/h`;
+    document.getElementById('graph_hail_val').textContent = `${hailData[hailData.length - 1]} mm`;
+
+    drawSparkline('svg_lightning', strokesData, '#eab308');
+    drawSparkline('svg_wind', windData, '#0284c7');
+    drawSparkline('svg_hail', hailData, '#ea580c');
+  }
+
+  // Cell Markers
   cellMarkerGroup.clearLayers();
   (s.cells || []).forEach(c => {
     const isSevere = c.severity === 'severe' || c.max_refl_dbz >= 52 || c.mesh_mm >= 19;
     const color = isSevere ? '#ef4444' : '#ea580c';
     
-    // Cell core circle
     const cm = L.circleMarker([c.lat, c.lon], {
       radius: Math.min(18, Math.max(8, c.max_refl_dbz / 4.0)),
       color: color,
@@ -1087,57 +1153,38 @@ function renderState(s) {
         </div>
       </div>
     `);
+
+    cm.on('click', () => zoomToCell(c.lat, c.lon));
   });
 
-  // Render Station Countdowns
-  renderEtas(s.etas);
+  // Lightning Pins Layer
+  lightningLayerGroup.clearLayers();
+  if (showLightningPins && s.strokes && s.strokes.length) {
+    s.strokes.forEach(([lat, lon]) => {
+      const flashMarker = L.circleMarker([lat, lon], {
+        radius: 4,
+        color: '#facc15',
+        weight: 2,
+        fillColor: '#ffffff',
+        fillOpacity: 0.95
+      }).addTo(lightningLayerGroup);
 
-  // Render Tracked Cells
-  renderCellList(s.cells);
-
-  // Render Sector Advisory
-  updateSectorAdvisory();
-
-  // Render Early Warning Bulletins
-  renderAlertsList();
-
-  // Update Verification Scorecard if available
-  if (s.verify && s.verify.model) {
-    const v = s.verify;
-    document.getElementById('verifBody').innerHTML = `
-      <tr>
-        <td>CSI @40 dBZ</td>
-        <td>${v.model.csi.toFixed(3)}</td>
-        <td>${v.persistence.csi.toFixed(3)}</td>
-        <td class="score-gain">+${(((v.model.csi - v.persistence.csi)/v.persistence.csi)*100).toFixed(1)}%</td>
-      </tr>
-      <tr>
-        <td>Probability of Detection (POD)</td>
-        <td>${v.model.pod.toFixed(3)}</td>
-        <td>${v.persistence.pod.toFixed(3)}</td>
-        <td class="score-gain">+${(((v.model.pod - v.persistence.pod)/v.persistence.pod)*100).toFixed(1)}%</td>
-      </tr>
-      <tr>
-        <td>False Alarm Ratio (FAR)</td>
-        <td>${v.model.far.toFixed(3)}</td>
-        <td>${v.persistence.far.toFixed(3)}</td>
-        <td class="score-gain">-${(((v.persistence.far - v.model.far)/v.persistence.far)*100).toFixed(1)}%</td>
-      </tr>
-      <tr>
-        <td>Fractions Skill Score (8 km)</td>
-        <td>${v.fss8_model.toFixed(3)}</td>
-        <td>${v.fss8_persistence.toFixed(3)}</td>
-        <td class="score-gain">+${(((v.fss8_model - v.fss8_persistence)/v.fss8_persistence)*100).toFixed(1)}%</td>
-      </tr>
-    `;
+      flashMarker.bindTooltip('⚡ Lightning Stroke Detected', { direction: 'top' });
+    });
   }
+
+  // Render ETAs and Cells
+  renderEtas(s.etas);
+  renderCellList(s.cells);
+  updateSectorAdvisory();
+  renderAlertsList();
 }
 
-// Render ETA Countdowns
+// Render Station Countdowns (Clickable to zoom)
 function renderEtas(etas) {
   const container = document.getElementById('etaList');
   if (!etas || Object.keys(etas).length === 0) {
-    container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">No storms currently tracking towards monitored stations.</div>';
+    container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:4px 0;">No storms tracking towards monitored stations.</div>';
     return;
   }
 
@@ -1146,13 +1193,13 @@ function renderEtas(etas) {
     if (!e || e.eta_min == null) continue;
     const isImminent = e.eta_min <= 30;
     items.push(`
-      <div class="cell-item ${isImminent ? 'severe' : ''}">
+      <div class="cell-item ${isImminent ? 'severe' : ''}" onclick="zoomToStation('${station}')" title="Click to zoom to ${station}">
         <div>
-          <div class="cell-info-primary">${station}</div>
+          <div class="cell-info-primary">${station} Station 📍</div>
           <div class="cell-info-sub">Cell #${e.cell_id} · ${e.max_refl_dbz || 45} dBZ · MESH ${e.max_mesh_mm || 0} mm</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:14px; font-weight:800; font-family:'JetBrains Mono',monospace; color:${isImminent ? 'var(--hazard-red)' : 'var(--orange-primary)'}">
+          <div style="font-size:13px; font-weight:800; font-family:'JetBrains Mono',monospace; color:${isImminent ? 'var(--hazard-red)' : 'var(--orange-primary)'}">
             ${e.eta_min.toFixed(0)} min
           </div>
           <div style="font-size:10px; color:var(--text-muted)">±${e.sigma_min || 3}m uncertainty</div>
@@ -1161,16 +1208,16 @@ function renderEtas(etas) {
     `);
   }
 
-  container.innerHTML = items.length ? items.join('') : '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">No storm threats inside arrival window.</div>';
+  container.innerHTML = items.length ? items.join('') : '<div style="font-size:11px; color:var(--text-muted); padding:4px 0;">No storm threats inside arrival window.</div>';
 }
 
-// Render Tracked Cells List
+// Render Tracked Cells List (Clickable to zoom)
 function renderCellList(cells) {
   const container = document.getElementById('cellList');
   const badge = document.getElementById('cellCountBadge');
   if (!cells || cells.length === 0) {
     badge.textContent = '0 active';
-    container.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:4px 0;">No active convective cells in domain.</div>';
+    container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); padding:4px 0;">No active convective cells in domain.</div>';
     return;
   }
 
@@ -1178,24 +1225,18 @@ function renderCellList(cells) {
   container.innerHTML = cells.map(c => {
     const isSev = c.severity === 'severe';
     return `
-      <div class="cell-item ${isSev ? 'severe' : ''}" onclick="zoomToCell(${c.lat}, ${c.lon})">
+      <div class="cell-item ${isSev ? 'severe' : ''}" onclick="zoomToCell(${c.lat}, ${c.lon})" title="Click to zoom to Cell #${c.id}">
         <div>
-          <div class="cell-info-primary">Storm Cell #${c.id} <span style="font-size:11px; font-weight:600; color:${isSev ? 'var(--hazard-red)' : 'var(--orange-primary)'}">(${c.severity})</span></div>
+          <div class="cell-info-primary">Storm Cell #${c.id} <span style="font-size:10px; font-weight:600; color:${isSev ? 'var(--hazard-red)' : 'var(--orange-primary)'}">(${c.severity})</span></div>
           <div class="cell-info-sub">Speed: ${c.speed_kmh} km/h · VIL: ${c.max_vil} kg/m²</div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:13px; font-weight:800; font-family:'JetBrains Mono',monospace;">${c.max_refl_dbz} dBZ</div>
+          <div style="font-size:12px; font-weight:800; font-family:'JetBrains Mono',monospace;">${c.max_refl_dbz} dBZ</div>
           <div style="font-size:10px; color:var(--text-muted)">MESH ${c.mesh_mm} mm</div>
         </div>
       </div>
     `;
   }).join('');
-}
-
-function zoomToCell(lat, lon) {
-  if (map) {
-    map.setView([lat, lon], 9, { animate: true });
-  }
 }
 
 // Render Early Warning Bulletins from Outbox
@@ -1208,8 +1249,8 @@ async function renderAlertsList() {
 
     if (alerts.length === 0) {
       container.innerHTML = `
-        <div style="font-size:12px; color:var(--text-muted); text-align:center; padding:12px;">
-          No active warnings. Convective cells are below warning criteria.
+        <div style="font-size:11px; color:var(--text-muted); text-align:center; padding:8px;">
+          No active warnings. Cells currently below warning criteria.
         </div>
       `;
       return;
@@ -1224,7 +1265,7 @@ async function renderAlertsList() {
             <span class="alert-countdown">${a.eta_min != null ? 'ETA ' + a.eta_min.toFixed(0) + ' min' : 'Immediate'}</span>
           </div>
           <div class="alert-desc">
-            Impact sector: <b>${a.poi || 'Target Zone'}</b> (P=${(a.prob * 100).toFixed(0)}%). High reflectivity core tracked.
+            Impact sector: <b>${a.poi || 'Target Zone'}</b> (P=${(a.prob * 100).toFixed(0)}%). Severe storm core tracked.
           </div>
           <div class="alert-meta">
             <span>Status: <b>${a.status || 'Active'}</b></span>
@@ -1238,7 +1279,7 @@ async function renderAlertsList() {
   }
 }
 
-// Update Sector Advisory Based on Active Role Tab
+// Update Sector Advisory
 function updateSectorAdvisory() {
   const badge = document.getElementById('activeSectorBadge');
   const box = document.getElementById('sectorAdvisoryContent');
@@ -1270,7 +1311,7 @@ function updateSectorAdvisory() {
   }
 }
 
-// Event Listeners & Controls
+// Setup Event Listeners
 function setupEvents() {
   // Scenario Switcher
   document.getElementById('scenarioSelect').addEventListener('change', async (e) => {
@@ -1301,7 +1342,7 @@ function setupEvents() {
     pollState();
   });
 
-  // Lead Time Buttons
+  // Timeline Leads
   document.querySelectorAll('.lead-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.lead-btn').forEach(b => b.classList.remove('active'));
@@ -1313,19 +1354,41 @@ function setupEvents() {
     });
   });
 
-  // Layer Selector Buttons
-  document.querySelectorAll('.layer-btn').forEach(btn => {
+  // Sensor Modality Buttons
+  document.querySelectorAll('.sensor-btn:not(#lightningToggleBtn)').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sensor-btn:not(#lightningToggleBtn)').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      activeLayerType = btn.dataset.layer;
+      activeSensorType = btn.dataset.sensor;
+      
+      // Update Legend Title
+      const titles = {
+        refl: 'Radar Reflectivity (dBZ)',
+        wind: 'Azimuthal Shear & Downburst Gust (s⁻¹)',
+        mesh: 'Hail Vertically Integrated Liquid (kg/m²)',
+        ci: 'Convective Initiation Probability',
+        bt: 'INSAT-3D Cloud Top Temp Inversion'
+      };
+      document.getElementById('legendTitle').textContent = titles[activeSensorType] || 'Field Intensity';
+
       if (currentState.grid) {
         updateRadarOverlay(currentState.grid);
       }
     });
   });
 
-  // Sector Role Tabs
+  // Lightning Pins Toggle
+  document.getElementById('lightningToggleBtn').addEventListener('click', (e) => {
+    showLightningPins = !showLightningPins;
+    e.target.style.opacity = showLightningPins ? '1' : '0.5';
+    if (!showLightningPins) {
+      lightningLayerGroup.clearLayers();
+    } else if (currentState.strokes) {
+      renderState(currentState);
+    }
+  });
+
+  // Role Tabs
   document.querySelectorAll('.role-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
@@ -1333,6 +1396,14 @@ function setupEvents() {
       activeRole = btn.dataset.role;
       updateSectorAdvisory();
     });
+  });
+
+  // Modal
+  document.getElementById('dataInfoBtn').addEventListener('click', () => {
+    document.getElementById('infoModal').style.display = 'flex';
+  });
+  document.getElementById('closeModalBtn').addEventListener('click', () => {
+    document.getElementById('infoModal').style.display = 'none';
   });
 
   // CAP Feed Link
@@ -1348,7 +1419,6 @@ async function pollState() {
     const res = await fetch('/api/state');
     const s = await res.json();
 
-    // Check if domain/scenario changed
     if (s.scenario_id && s.scenario_id !== lastScenarioId) {
       lastScenarioId = s.scenario_id;
       document.getElementById('scenarioSelect').value = s.scenario_id;

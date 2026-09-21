@@ -21,7 +21,8 @@ goes_dl.log
 # --- local dashboard artifacts ---
 docs/verification/*.png
 
-# --- secrets ---
+# --- local tools with credentials (NEVER commit) ---
+mdapi (1)/
 .env
 
 # --- local docs / dev tooling (on disk, not part of the product) ---
