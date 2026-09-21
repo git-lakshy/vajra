@@ -48,6 +48,26 @@ def _post_json(url: str, payload: dict, headers: dict | None = None,
         return 0, f"{type(e).__name__}: {e}"
 
 
+def _post_form(url: str, fields: dict, headers: dict | None = None,
+               timeout: int = 15) -> tuple[int, str]:
+    """application/x-www-form-urlencoded POST (Gupshup-style APIs)."""
+    import urllib.parse
+    data = urllib.parse.urlencode(fields).encode()
+    req = urllib.request.Request(
+        url, data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded",
+                 **(headers or {})})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read(3000).decode("utf-8", "ignore")
+    except Exception as e:  # noqa: BLE001
+        return 0, f"{type(e).__name__}: {e}"
+
+
+def _needs_unicode(text: str) -> bool:
+    return any(ord(c) > 127 for c in text)
+
+
 # ---------------------------------------------------------------------------
 class FileChannel(Channel):
     """Demo outbox: every message lands in logs/outbox/ as JSON."""
@@ -199,8 +219,145 @@ class EmailChannel(Channel):
 CHANNELS: dict[str, Channel] = {
     "file": FileChannel(),
     "telegram": TelegramChannel(),
-    "whatsapp": WhatsAppChannel(),
-    "sms": SMSGateway(),
-    "ivr": IVRChannel(),
+    "whatsapp": None,   # wired below (Gupshup primary); generics kept too
+    "sms": None,
+    "ivr": None,
     "email": EmailChannel(),
+    "whatsapp_meta": WhatsAppChannel(),
+    "sms_generic": SMSGateway(),
+    "ivr_generic": IVRChannel(),
 }
+
+
+# ---------------------------------------------------------------------------
+# Provider implementations (Gupshup single-account stack for IN delivery)
+# ---------------------------------------------------------------------------
+class GupshupWhatsApp(Channel):
+    """Gupshup WhatsApp: session text, or approved-template mode.
+
+    Env: GUPSHUP_APIKEY, GUPSHUP_WA_SOURCE (E.164 business number; sandbox
+    philosopher's proxy is 917834811114), GUPSHUP_WA_APP (src.name).
+    Optional template mode: GUPSHUP_WA_TEMPLATE_ID (+ LANG, default en) where
+    the approved template takes {{1}} = full alert text.
+    Sandbox note: the recipient must first opt in by messaging the sandbox
+    number; session text works inside the 24-h window.
+    """
+    name = "whatsapp"
+    ENDPOINT = "https://api.gupshup.io/wa/api/v1/msg"
+    TEMPLATE_ENDPOINT = "https://api.gupshup.io/wa/api/v1/template/msg"
+
+    def available(self) -> tuple[bool, str]:
+        ok = bool(os.environ.get("GUPSHUP_APIKEY")
+                  and os.environ.get("GUPSHUP_WA_SOURCE")
+                  and os.environ.get("GUPSHUP_WA_APP"))
+        return (True, "ok") if ok else (
+            False, "GUPSHUP_APIKEY/GUPSHUP_WA_SOURCE/GUPSHUP_WA_APP unset")
+
+    def send(self, to: str, text: str, meta: dict) -> dict:
+        ok, _ = self.available()
+        if not ok or not to:
+            return FileChannel().send(to, "[whatsapp-stub] " + text, meta) | \
+                {"channel": "whatsapp", "status": "queued-no-credentials"}
+        tid = os.environ.get("GUPSHUP_WA_TEMPLATE_ID", "")
+        headers = {"apikey": os.environ["GUPSHUP_APIKEY"]}
+        if tid:
+            code, body = _post_form(self.TEMPLATE_ENDPOINT, {
+                "channel": "whatsapp",
+                "source": os.environ["GUPSHUP_WA_SOURCE"],
+                "destination": to,
+                "src.name": os.environ["GUPSHUP_WA_APP"],
+                "template": json.dumps({
+                    "id": tid, "params": [text[:900]],
+                    "language": os.environ.get("GUPSHUP_WA_LANG", "en")}),
+            }, headers)
+        else:
+            code, body = _post_form(self.ENDPOINT, {
+                "channel": "whatsapp",
+                "source": os.environ["GUPSHUP_WA_SOURCE"],
+                "destination": to,
+                "src.name": os.environ["GUPSHUP_WA_APP"],
+                "message": json.dumps({"type": "text", "text": text[:1000]}),
+            }, headers)
+        if code == 200 and '"status":"submitted"' in body.replace(" ", ""):
+            return _receipt("whatsapp", to, "delivered", body[:160])
+        return _receipt("whatsapp", to, "failed", f"http={code} {body[:160]}")
+
+
+class GupshupSMS(Channel):
+    """Gupshup Enterprise SMS (GatewayAPI). Unicode_text auto-selected for
+    Hindi/Marathi. Env: GUPSHUP_SMS_USERID, GUPSHUP_SMS_PASSWORD.
+    India note: DLT entity + sender-ID/template registration is required by
+    regulation for production traffic; sandbox testing works without it.
+    """
+    name = "sms"
+    ENDPOINT = "https://enterprise.smsgupshup.com/GatewayAPI/rest"
+
+    def available(self) -> tuple[bool, str]:
+        ok = bool(os.environ.get("GUPSHUP_SMS_USERID")
+                  and os.environ.get("GUPSHUP_SMS_PASSWORD"))
+        return (True, "ok") if ok else (
+            False, "GUPSHUP_SMS_USERID/GUPSHUP_SMS_PASSWORD unset")
+
+    def send(self, to: str, text: str, meta: dict) -> dict:
+        ok, _ = self.available()
+        if not ok or not to:
+            return FileChannel().send(to, "[sms-stub] " + text, meta) | \
+                {"channel": "sms", "status": "queued-no-credentials"}
+        code, body = _post_form(self.ENDPOINT, {
+            "method": "sendMessage", "v": "1.1", "auth_scheme": "plain",
+            "format": "json",
+            "userid": os.environ["GUPSHUP_SMS_USERID"],
+            "password": os.environ["GUPSHUP_SMS_PASSWORD"],
+            "send_to": to.replace("+", "").replace(" ", ""),
+            "msg_type": "Unicode_text" if _needs_unicode(text) else "text",
+            "msg": text[:459],
+        })
+        if code == 200 and "success" in body.lower():
+            return _receipt("sms", to, "delivered", body[:160])
+        return _receipt("sms", to, "failed", f"http={code} {body[:160]}")
+
+
+class ExotelIVR(Channel):
+    """Exotel click-to-call with optional TTS flow URL.
+
+    Env: EXOTEL_SID, EXOTEL_TOKEN, EXOTEL_CALLERID (Exotel virtual number),
+    optional EXOTEL_FLOW_URL (voice applet that Says the alert text).
+    Without a flow URL the call connects the recipient to the caller ID
+    (callback pattern); with it, the applet speaks the alert.
+    """
+    name = "ivr"
+
+    def available(self) -> tuple[bool, str]:
+        ok = bool(os.environ.get("EXOTEL_SID")
+                  and os.environ.get("EXOTEL_TOKEN")
+                  and os.environ.get("EXOTEL_CALLERID"))
+        return (True, "ok") if ok else (
+            False, "EXOTEL_SID/EXOTEL_TOKEN/EXOTEL_CALLERID unset")
+
+    def send(self, to: str, text: str, meta: dict) -> dict:
+        ok, _ = self.available()
+        if not ok or not to:
+            return FileChannel().send(to, "[ivr-stub] " + text, meta) | \
+                {"channel": "ivr", "status": "queued-no-credentials"}
+        import base64
+        sid = os.environ["EXOTEL_SID"]
+        token = os.environ["EXOTEL_TOKEN"]
+        cred = base64.b64encode(f"{sid}:{token}".encode()).decode()
+        fields = {"From": to.replace("+", "").replace(" ", ""),
+                  "CallerId": os.environ["EXOTEL_CALLERID"],
+                  "CallType": "trans"}
+        if os.environ.get("EXOTEL_FLOW_URL"):
+            fields["Url"] = os.environ["EXOTEL_FLOW_URL"]
+        code, body = _post_form(
+            f"https://api.exotel.com/v1/Accounts/{sid}/Calls/connect.json",
+            fields, {"Authorization": f"Basic {cred}"})
+        if code in (200, 201) and "queued" in body.lower():
+            return _receipt("ivr", to, "delivered", body[:160])
+        return _receipt("ivr", to, "failed", f"http={code} {body[:160]}")
+
+
+CHANNELS.update({
+    "whatsapp": GupshupWhatsApp(),
+    "sms": GupshupSMS(),
+    "ivr": ExotelIVR(),
+})

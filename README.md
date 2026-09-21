@@ -114,6 +114,23 @@ Messages render in **English, Hindi, Marathi** (SMS-safe length). Operations:
 
 Drill it: `python run_alert_drill.py --cycles 96` (real case → drafts → approve → receipts).
 
+### 🔑 Going live — what you need (then run `python setup_alerts.py`)
+
+The wizard configures each channel and **sends a live test** before saving to
+`.env` (gitignored, auto-loaded by server + drill). `setup_alerts.py --check`
+shows live/stub status anytime.
+
+| # | Channel | Get this | Time | Notes |
+|---|---|---|---|---|
+| 1 | **Telegram** ✅ fastest | Bot token (@BotFather) + your chat ID | 5 min | Free, instant, best first live channel |
+| 2 | **Email** ✅ instant | Gmail address + App Password (Google → 2-Step ON → App passwords) | 10 min | `smtp.gmail.com:587`, free |
+| 3 | **WhatsApp** | Gupshup account + API key + app (`src.name`); sandbox proxy `917834811114` is free — recipient must opt in by messaging it first | 30–60 min | Business-initiated alerts need an approved template (`GUPSHUP_WA_TEMPLATE_ID`); session text works in-window |
+| 4 | **SMS** | Gupshup Enterprise `userid` + `password` | 30 min | Hindi/Marathi auto-sent as Unicode; **production India traffic needs DLT entity + sender ID + templates** (regulation) |
+| 5 | **IVR calls** | Exotel SID + token + Exotel number; optional flow URL whose applet Says the alert | 30–60 min | Exotel account + number required |
+
+`whatsapp_meta` / `sms_generic` / `ivr_generic` remain as bring-your-own-provider
+alternatives (Meta Cloud API, any HTTP gateway).
+
 ## 🔌 API
 
 | Endpoint | Description |

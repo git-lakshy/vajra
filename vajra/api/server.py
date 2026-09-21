@@ -106,6 +106,8 @@ class LiveState:
 
 
 def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
+    from ..envfile import load_dotenv
+    load_dotenv()
     app = FastAPI(title="VAJRA Nowcast API", version="0.1.0")
     live = LiveState(source, interval_s)
     app.state.live = live

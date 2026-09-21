@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from vajra.alerting.dispatcher import AlertDispatcher
 from vajra.config import POIS
 from vajra.engine import VajraEngine
+from vajra.envfile import load_dotenv
+
+load_dotenv()  # provider credentials from .env (see setup_alerts.py)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")  # Hindi/Marathi samples on cp1252
