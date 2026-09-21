@@ -110,10 +110,17 @@
       <div id="cellList"><div class="muted">—</div></div>
     </div>
 
-    <div class="card" id="alertCard" style="display:none">
-      <h3>CAP 1.2 alerts</h3>
-      <div id="alertList"></div>
-      <a class="caplink" href="/api/alerts/cap" target="_blank">Download CAP XML →</a>
+    <div class="card" id="alertCard">
+      <h3>Alert operations (multi-channel)</h3>
+      <div class="ctl" style="margin-bottom:8px">
+        <button id="approveAllBtn">Approve all drafts</button>
+        <button id="dispatchBtn">Dispatch approved</button>
+        <button id="autoBtn">Auto-dispatch: off</button>
+      </div>
+      <div id="alertList"><div class="muted">No alert drafts yet — policies evaluate every cycle.</div></div>
+      <div class="muted" style="margin-top:6px" id="chanStatus"></div>
+      <a class="caplink" href="/api/alerts/cap" target="_blank">CAP XML →</a>
+      &nbsp;<a class="caplink" href="/api/capfeed" target="_blank">CAP feed (SACHET-style) →</a>
     </div>
 
     <div class="card">
@@ -241,18 +248,8 @@ function render(s) {
         `Cell #${c.id}: microburst risk ${fmtPct(hz.downburst?.max_prob || 0)}, hail ${fmtPct(hz.hail?.max_prob || 0)}, ETA Nagpur ${c.etas.find(x => x.poi === 'Nagpur') ? c.etas.find(x => x.poi === 'Nagpur').eta_min + ' min' : '—'}`).join('<br>');
   }
 
-  // alerts + why
-  const ac = document.getElementById('alertCard');
-  if ((s.alerts || []).length) {
-    ac.style.display = '';
-    document.getElementById('alertList').innerHTML = s.alerts.map(a =>
-      `<div class="alert"><b>${a.hazard}</b> — cell #${a.cell}</div>`).join('');
-    document.getElementById('whyPanel').innerHTML =
-      `Lightning jump: ${hz.lightning?.jump_cells || 0} cells · cloud-top cooling &lt; -4 K/15 min trigger · MESH ≥ 19 mm · azimuthal shear ≥ 4×10⁻³ s⁻¹`;
-  } else {
-    ac.style.display = 'none';
-    document.getElementById('whyPanel').textContent = 'No active alerts.';
-  }
+  // alert operations: outbox with approve/dispatch
+  pollOutbox();
 
   // verification
   const v = s.verify || {};
@@ -267,6 +264,38 @@ function render(s) {
 }
 
 let state = {};
+async function pollOutbox() {
+  try {
+    const r = await fetch('/api/alerts/outbox'); const o = await r.json();
+    const list = o.alerts || [];
+    document.getElementById('alertList').innerHTML = list.length ? list.slice(-8).reverse().map(a =>
+      `<div class="alert"><b>${a.id}</b> ${a.role}/${a.poi} · ${a.hazard} P=${(a.prob * 100).toFixed(0)}%` +
+      (a.eta_min != null ? ` · ETA ${a.eta_min.toFixed(0)}m` : '') +
+      ` · <i>${a.status}</i>` +
+      (a.status === 'draft' ? ` <button onclick="approve('${a.id}')">approve</button>` : '') +
+      (a.status === 'approved' ? ` <button onclick="dispatchOne('${a.id}')">send</button>` : '') +
+      (a.receipts && a.receipts.length ? `<div class="muted">${a.receipts.map(x => x.channel + ':' + x.status).join(' · ')}</div>` : '') +
+      `</div>`).join('')
+      : '<div class="muted">No alert drafts yet — policies evaluate every cycle.</div>';
+    const c = await (await fetch('/api/alerts/channels')).json();
+    document.getElementById('chanStatus').textContent =
+      'channels: ' + Object.entries(c).map(([k, v]) => `${k}(${v.available ? 'live' : 'stub'})`).join(' · ');
+  } catch (e) { /* server restarting */ }
+}
+async function approve(id) { await fetch('/api/alerts/approve/' + id, { method: 'POST' }); pollOutbox(); }
+async function dispatchOne(id) { await fetch('/api/alerts/dispatch/' + id, { method: 'POST' }); pollOutbox(); }
+document.getElementById('approveAllBtn').addEventListener('click', async () => {
+  await fetch('/api/alerts/approve-all', { method: 'POST' }); pollOutbox();
+});
+document.getElementById('dispatchBtn').addEventListener('click', async () => {
+  await fetch('/api/alerts/dispatch-approved', { method: 'POST' }); pollOutbox();
+});
+document.getElementById('autoBtn').addEventListener('click', async e => {
+  const on = e.target.textContent.includes('off');
+  await fetch('/api/alerts/auto/' + (on ? 'on' : 'off'), { method: 'POST' });
+  e.target.textContent = 'Auto-dispatch: ' + (on ? 'on' : 'off');
+  pollOutbox();
+});
 async function poll() {
   try { const r = await fetch('/api/state'); state = await r.json(); render(state); }
   catch (e) { /* server restarting */ }

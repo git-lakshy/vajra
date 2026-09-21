@@ -68,9 +68,13 @@ class LiveState:
     """Holds the engine + its latest forecast fields for the API."""
 
     def __init__(self, source: str, interval_s: float) -> None:
+        from ..alerting.dispatcher import AlertDispatcher
+        from ..config import POIS
         self.engine = VajraEngine(source=source)
+        self.dispatcher = AlertDispatcher(pois=list(POIS))
         self.interval_s = interval_s
         self.paused = False
+        self.auto_dispatch = False   # when True, approved drafts send at once
         self.latest_leads: dict[int, np.ndarray] = {}
         self.latest_ci: dict[int, np.ndarray] = {}
         self.latest_ens_spread: np.ndarray | None = None
@@ -84,6 +88,9 @@ class LiveState:
             self.latest_leads = dict(eng.latest_leads)
             self.latest_ens_spread = eng.latest_spread30
             self.latest_ci = dict(eng.latest_ci)
+            self.dispatcher.ingest(state)
+            if self.auto_dispatch:
+                self.dispatcher.dispatch_approved()
 
     def run_forever(self) -> None:
         while not self._stop.is_set():
@@ -192,6 +199,88 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
     def step() -> dict:
         live.step_once()
         return {"frame": live.engine.last_state.frame}
+
+    # ---------------- alert system ----------------
+    @app.get("/api/alerts/outbox")
+    def outbox() -> dict:
+        with live._lock:
+            return {"alerts": live.dispatcher.outbox()}
+
+    @app.post("/api/alerts/approve/{alert_id}")
+    def approve(alert_id: str) -> dict:
+        with live._lock:
+            return {"ok": live.dispatcher.approve(alert_id)}
+
+    @app.post("/api/alerts/approve-all")
+    def approve_all() -> dict:
+        with live._lock:
+            return {"approved": live.dispatcher.approve_all()}
+
+    @app.post("/api/alerts/dispatch/{alert_id}")
+    def dispatch(alert_id: str) -> dict:
+        with live._lock:
+            return {"receipts": live.dispatcher.dispatch(alert_id)}
+
+    @app.post("/api/alerts/dispatch-approved")
+    def dispatch_approved() -> dict:
+        with live._lock:
+            return {"dispatched": live.dispatcher.dispatch_approved()}
+
+    @app.post("/api/alerts/auto/{flag}")
+    def auto(flag: str) -> dict:
+        live.auto_dispatch = flag == "on"
+        return {"auto_dispatch": live.auto_dispatch}
+
+    @app.get("/api/alerts/channels")
+    def channels() -> dict:
+        from ..alerting.channels import CHANNELS
+        return {k: {"available": ok, "reason": reason}
+                for k, ch in CHANNELS.items()
+                for ok, reason in [ch.available()]}
+
+    @app.get("/api/subscribers")
+    def subscribers() -> dict:
+        with live._lock:
+            return {"subscribers": [
+                {"id": s.id, "role": s.role, "poi": s.poi,
+                 "languages": list(s.languages), "channels": s.channels}
+                for s in live.dispatcher.subscribers]}
+
+    @app.post("/api/subscribers/{sub_id}")
+    def subscribe(sub_id: str, payload: dict) -> dict:
+        """Register/update a subscriber address book, e.g.
+        {"telegram": "<chat_id>", "sms": "+91...", "languages": ["hi"]}."""
+        with live._lock:
+            for s in live.dispatcher.subscribers:
+                if s.id == sub_id:
+                    for k, v in payload.items():
+                        if k == "languages":
+                            s.languages = tuple(v)
+                        else:
+                            s.channels[k] = v
+                    return {"ok": True, "id": sub_id}
+        return {"ok": False, "error": "unknown subscriber"}
+
+    @app.get("/api/capfeed")
+    def capfeed() -> Response:
+        """SACHET-style ATOM feed of approved/sent CAP alerts."""
+        from xml.sax.saxutils import escape
+        with live._lock:
+            items = []
+            for r in live.dispatcher.alerts.values():
+                if r.status not in ("approved", "sent") or not r.cap_xml:
+                    continue
+                items.append(
+                    f"<entry><id>{escape(r.id)}</id>"
+                    f"<title>{escape(r.hazard)} {escape(r.poi)}</title>"
+                    f"<updated>{escape(r.ts)}</updated>"
+                    f"<content type='application/cap+xml'>"
+                    f"{escape(r.cap_xml)}</content></entry>")
+        feed = (f'<?xml version="1.0" encoding="UTF-8"?>'
+                f'<feed xmlns="http://www.w3.org/2005/Atom">'
+                f"<title>VAJRA CAP feed (demo)</title>"
+                f"{''.join(items)}</feed>")
+        return Response(feed, media_type="application/atom+xml")
 
     @app.get("/api/verify")
     def verify() -> dict:

@@ -93,6 +93,27 @@ models/                trained LightGBM + isotonic calibrations (auto-fallback i
 Full reports: `docs/verification/verification_report.md`. Every number above is
 produced by the system, not asserted — see `run_verification.py`.
 
+## 🔔 Alert system (multi-channel, India-ready)
+
+Policies → human approval → dispatch. Per-role thresholds, persistence,
+per-POI cooldowns, and located ETAs (no domain-wide spam):
+
+| Channel | Status | Setup |
+|---|---|---|
+| CAP 1.2 feed (`/api/capfeed`) | ✅ live | SACHET-compatible ATOM feed, polled by aggregators |
+| Telegram | ✅ live on token | Set `VAJRA_TELEGRAM_TOKEN`, register chat IDs via `/api/subscribers/{id}` |
+| File outbox (`logs/outbox/`) | ✅ always | Demo + audit fallback |
+| WhatsApp Cloud API | 🔌 provider hook | `VAJRA_WA_TOKEN` + `VAJRA_WA_PHONE_ID`; stubs to file without creds |
+| SMS gateway | 🔌 provider hook | `VAJRA_SMS_URL` + `VAJRA_SMS_KEY` (MSG91/Gupshup-style) |
+| IVR voice calls | 🔌 provider hook | `VAJRA_IVR_URL` + `VAJRA_IVR_KEY` |
+| Email (SMTP) | 🔌 provider hook | `VAJRA_SMTP_HOST/USER/PASS` |
+
+Messages render in **English, Hindi, Marathi** (SMS-safe length). Operations:
+`GET /api/alerts/outbox` · `POST /api/alerts/approve/{id}` ·
+`POST /api/alerts/dispatch-approved` · `POST /api/alerts/auto/{on|off}`.
+
+Drill it: `python run_alert_drill.py --cycles 96` (real case → drafts → approve → receipts).
+
 ## 🔌 API
 
 | Endpoint | Description |
