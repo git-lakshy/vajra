@@ -16,7 +16,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from ..config import FRAME_MINUTES, LATENCY_BUDGET_S, POIS
+from ..config import FRAME_MINUTES, GRID, LATENCY_BUDGET_S, POIS
 from ..engine import VajraEngine
 from ..grid import latlon_to_grid_xy
 
@@ -80,6 +80,7 @@ class LiveState:
         self.latest_ens_spread: np.ndarray | None = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
+        self.step_once()
 
     def step_once(self) -> None:
         eng = self.engine
@@ -91,6 +92,19 @@ class LiveState:
             self.dispatcher.ingest(state)
             if self.auto_dispatch:
                 self.dispatcher.dispatch_approved()
+
+    def switch_scenario(self, scenario_id: str) -> dict:
+        from ..alerting.dispatcher import AlertDispatcher
+        from ..config import POIS
+        with self._lock:
+            meta = self.engine.switch_scenario(scenario_id)
+            if meta:
+                self.dispatcher = AlertDispatcher(pois=list(POIS))
+                self.latest_leads.clear()
+                self.latest_ci.clear()
+                self.latest_ens_spread = None
+                self.step_once()
+            return meta
 
     def run_forever(self) -> None:
         while not self._stop.is_set():
@@ -136,14 +150,31 @@ def create_app(source: str = "synthetic", interval_s: float = 2.0) -> FastAPI:
             "paused": live.paused,
             "model_version": st.model_version,
             "qc": st.qc,
-            "grid": {"nx": 512, "ny": 512, "dx_km": 1.0,
-                     "bounds": [[18.85, 76.82], [23.45, 81.36]]},
+            "scenario_id": getattr(st, "scenario_id", "uttarakhand_cloudburst"),
+            "scenario_name": getattr(st, "scenario_name", "Uttarakhand Himalayan Cloudburst"),
+            "pois": {k: [v[0], v[1]] for k, v in POIS.items()},
+            "grid": {"nx": GRID["nx"], "ny": GRID["ny"], "dx_km": GRID["dx"],
+                     "center": [GRID["center_lat"], GRID["center_lon"]],
+                     "bounds": [[GRID["lat_bottom"], GRID["lon_left"]],
+                                [GRID["lat_top"], GRID["lon_right"]]]},
             "cells": st.cells,
             "hazards_summary": st.hazards_summary,
             "etas": st.etas,
             "alerts": [{"cell": a["cell"], "hazard": a["hazard"]} for a in st.alerts],
             "verify": st.verify,
         }
+
+    @app.get("/api/scenarios")
+    def list_scenarios() -> list[dict]:
+        from ..ingest.domains import SCENARIOS
+        return list(SCENARIOS.values())
+
+    @app.post("/api/scenario/{scenario_id}")
+    def set_scenario(scenario_id: str) -> dict:
+        meta = live.switch_scenario(scenario_id)
+        if not meta:
+            raise HTTPException(400, f"unknown scenario: {scenario_id}")
+        return {"ok": True, "scenario": meta}
 
     @app.get("/api/alerts/cap")
     def cap_list() -> Response:
