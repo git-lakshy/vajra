@@ -10,6 +10,7 @@ data/
 
 # --- logs / transient ---
 *.log
+logs/
 *.tmp
 server_test*.log
 verif_run*.log

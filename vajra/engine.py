@@ -7,14 +7,16 @@ Every cycle times itself against the 90-second latency budget.
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
-from .config import (CI_LEADS_MIN, FRAME_MINUTES, GRID, LATENCY_BUDGET_S,
-                     NOWCAST_LEADS_MIN, POIS, STEERING_WIND_MS, THRESH)
+from .config import (CI_LEADS_MIN, FRAME_MINUTES, GRID, HAIL_ML_WEIGHT,
+                     LATENCY_BUDGET_S, MODEL_VERSION, NOWCAST_LEADS_MIN, POIS,
+                     STEERING_WIND_MS, THRESH)
 from .alerting.cap import cap_alert
 from .hazards.heads import run_all_hazards
 from .hazards.ml_heads import MLHazardHeads
@@ -61,14 +63,27 @@ class EngineState:
     etas: dict = field(default_factory=dict)
     alerts: list[dict] = field(default_factory=list)
     verify: dict = field(default_factory=dict)
+    qc: dict = field(default_factory=dict)
+    model_version: str = ""
+    scenario_id: str = "uttarakhand_cloudburst"
+    scenario_name: str = "Uttarakhand Himalayan Cloudburst"
 
 
 class VajraEngine:
-    def __init__(self, source: str = "synthetic") -> None:
+    def __init__(self, source: str = "uttarakhand_cloudburst") -> None:
+        from .ingest.domains import SCENARIOS, apply_scenario
         self.store = SlabStore()
         self.tracker = StormTracker()
         self.source = source
-        self.case = SyntheticCase() if source == "synthetic" else None
+        self.scenario_meta = {}
+        if source in SCENARIOS:
+            self.scenario_meta = apply_scenario(source)
+            self.case = SyntheticCase(scenario_id=source)
+        elif source == "synthetic":
+            self.scenario_meta = apply_scenario("uttarakhand_cloudburst")
+            self.case = SyntheticCase(scenario_id="uttarakhand_cloudburst")
+        else:
+            self.case = None
         self.mrms: object | None = None
         self.goes: object | None = None
         self.ts0 = datetime(2026, 5, 10, 7, 30, tzinfo=timezone.utc)  # 13:00 IST
@@ -104,10 +119,27 @@ class VajraEngine:
         self.verify_history: list[dict] = []
         self.last_state = EngineState()
 
+    def switch_scenario(self, scenario_id: str) -> dict:
+        from .ingest.domains import SCENARIOS, apply_scenario
+        if scenario_id in SCENARIOS:
+            self.scenario_meta = apply_scenario(scenario_id)
+            self.source = scenario_id
+            self.case = SyntheticCase(scenario_id=scenario_id)
+            self.store = SlabStore()
+            self.tracker = StormTracker()
+            self._u = None
+            self._v = None
+            self._pending.clear()
+            self.verify_history.clear()
+            self.latest_leads.clear()
+            self.latest_ci.clear()
+            return self.scenario_meta
+        return {}
+
     # ------------------------------------------------------------------
     def ingest_frame(self, frame: int = 1) -> dict:
         """One ingestion cycle from the active source adapter."""
-        if self.source == "synthetic":
+        if self.case is not None:
             f = self.case.fields()
             self.case.step()
             return f
@@ -180,6 +212,16 @@ class VajraEngine:
         ci = {L: ci_probability(self.store, L) for L in CI_LEADS_MIN}
         self.latest_ci = ci
 
+        # ---- Tier-3: 180-min blended severe-convection probability ----
+        # P(refl>=40 @120min from ensemble) blended with CI @60min using
+        # the measured crossover weights (extrapolation dead by ~120 min,
+        # NWP/CI regime takes over). Wires blend_prob into the live path.
+        if 120 in self.latest_leads and 60 in self.latest_ci:
+            p_ext = np.mean(
+                [m >= THRESH["refl_severe_dbz"] for m in ens[leads.index(120)]],
+                axis=0).astype(np.float32)
+            self.latest_leads[180] = blend_prob(p_ext, ci[60], None, 180)
+
         # ---- hazards (4 heads) ---------------------------------------
         hazards = run_all_hazards(self.store)
         # ML heads override: lightning from the SEVIR model when available;
@@ -194,7 +236,7 @@ class VajraEngine:
             p_sev_ml = self.ml_heads.severe_prob(self.store)
             if p_sev_ml is not None:
                 hazards["hail"]["prob"] = np.maximum(
-                    hazards["hail"]["prob"], 0.7 * p_sev_ml)
+                    hazards["hail"]["prob"], HAIL_ML_WEIGHT * p_sev_ml)
                 hazards["hail"]["ml_active"] = True
         self.latest_hazards = hazards
 
@@ -221,6 +263,17 @@ class VajraEngine:
         alerts = self._emit_alerts(tracks, hazards, etas)
 
         latency = time.perf_counter() - t_start
+        qc = {
+            "refl_ok": bool(refl is not None and np.isfinite(refl).any()
+                            and float(refl.max()) > 0),
+            "bt_ok": self.store.latest("bt") is not None,
+            "strokes_n": len(self.store.strokes[-1]) if self.store.strokes
+            else 0,
+            "mesh_ok": bool(fields.get("mesh") is not None
+                            and np.asarray(fields["mesh"]).any()),
+            "flow_confidence": round(self._flow_confidence, 3),
+            "source": self.source,
+        }
         state = EngineState(
             frame=frame,
             ts=(self.ts0 + timedelta(minutes=frame * FRAME_MINUTES)).isoformat(),
@@ -230,9 +283,34 @@ class VajraEngine:
             etas=etas,
             alerts=alerts,
             verify=self.verify_history[-1] if self.verify_history else {},
+            qc=qc,
+            model_version=MODEL_VERSION,
+            scenario_id=self.source,
+            scenario_name=self.scenario_meta.get("name", self.source.replace("_", " ").title()),
         )
         self.last_state = state
+        self._audit(state, hazards, tracks)
         return state
+
+    def _audit(self, state: EngineState, hazards, tracks) -> None:
+        """Append one JSONL audit record per cycle (NFR-05)."""
+        try:
+            import json
+            os.makedirs("logs", exist_ok=True)
+            rec = {
+                "ts": state.ts, "frame": state.frame,
+                "model_version": MODEL_VERSION, "source": self.source,
+                "latency_s": state.latency_s,
+                "n_cells": len(tracks),
+                "n_alerts": len(state.alerts),
+                "hazards_max": {k: v["max_prob"]
+                                for k, v in state.hazards_summary.items()},
+                "qc": state.qc,
+            }
+            with open("logs/audit.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception:
+            pass  # auditing must never break the pipeline
 
     # ------------------------------------------------------------------
     def _cells_payload(self, tracks, etas) -> list[dict]:
@@ -262,6 +340,7 @@ class VajraEngine:
                 "max_prob": round(float(p.max()), 3),
                 "mean_prob": round(float(p.mean()), 3),
                 "area_km2_above_0.5": int((p >= 0.5).sum()),
+                "ml_active": bool(d.get("ml_active", False)),
             }
         if "lightning" in hazards:
             out["lightning"]["strokes_this_frame"] = hazards["lightning"]["n_strokes"]

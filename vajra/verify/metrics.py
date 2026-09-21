@@ -37,3 +37,9 @@ def fss(forecast: np.ndarray, obs: np.ndarray, thr: float, window_km: int) -> fl
     num = np.mean((ff - of) ** 2)
     den = np.mean(ff ** 2) + np.mean(of ** 2)
     return float(1.0 - num / den) if den > 0 else 1.0
+
+
+def bt_threshold_baseline(bt: np.ndarray, thr_K: float = 240.0) -> np.ndarray:
+    """Satellite/threshold baseline (§5.13): cold cloud tops (<240 K) as the
+    convection proxy, scored like any other forecast field."""
+    return (bt <= thr_K).astype(np.float32)

@@ -168,7 +168,14 @@ def hazard_downburst(store: SlabStore) -> dict:
     rising = np.clip(vil_rise / 15.0, 0, 1)
 
     shear_mag = np.clip(np.abs(shear) / THRESH["shear_downburst"], 0, 2)
-    gust_kmh = 40.0 + 30.0 * shear_mag + 12.0 * rising + np.clip((refl - 45) / 2, 0, 15)
+    # rotation tracks (MRMS, s^-1): sustained meso rotation adds gust risk
+    rot = store.latest("rot")
+    if rot is not None and rot.shape == refl.shape:
+        rot_mag = np.clip(np.abs(rot) / 0.008, 0, 2)
+    else:
+        rot_mag = np.zeros_like(shear_mag)
+    gust_kmh = (40.0 + 30.0 * shear_mag + 12.0 * rising
+                + 12.0 * rot_mag + np.clip((refl - 45) / 2, 0, 15))
     p = calibrate_gust(gust_kmh)
     return {"prob": p.astype(np.float32), "gust_kmh": gust_kmh.astype(np.float32)}
 

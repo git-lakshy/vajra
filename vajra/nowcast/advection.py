@@ -124,21 +124,6 @@ def _apply_trend(base: np.ndarray, prev: np.ndarray, steps: int,
     return base + trend_gain * damping * delta
 
 
-def extrapolate(field: np.ndarray, prev: np.ndarray | None,
-                u: np.ndarray, v: np.ndarray,
-                lead_minutes: int) -> np.ndarray:
-    """Deterministic extrapolation to a lead time (minutes)."""
-    steps = max(1, round(lead_minutes / FRAME_MINUTES))
-    out = field
-    for s in range(1, steps + 1):
-        out = semi_lagrangian_advection(field, u, v, s)
-        if prev is not None and s <= 6:
-            adv_prev = semi_lagrangian_advection(prev, u, v, s)
-            out = _apply_trend(out, adv_prev, s)
-        out = np.clip(out, 0, 75)
-    return out
-
-
 def ensemble_forecast(field: np.ndarray, prev: np.ndarray | None,
                       u: np.ndarray, v: np.ndarray,
                       leads_minutes: list[int],

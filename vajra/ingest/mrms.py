@@ -30,23 +30,8 @@ PRODUCTS = {
     "shear": "MergedAzShear_0-2kmAGL_00.50",
     "rot": "RotationTrack30min_00.50",
 }
-# MRMS grid constants
-LAT0, LON0, DL = 54.995, 230.005 - 360.0, 0.01
-NROWS, NCOLS = 3500, 7000
-
-
-def _subdomain_slices() -> tuple[slice, slice]:
-    """Row/col slices of the MRMS grid covering a ~5.1 deg box around the
-    configured domain centre (slightly padded for the 512x512 resample)."""
-    clat, clon = GRID["center_lat"], GRID["center_lon"]
-    half = 2.55
-    i0 = int(round((LAT0 - (clat + half)) / DL))
-    i1 = int(round((LAT0 - (clat - half)) / DL))
-    j0 = int(round(((clon - half) - LON0) / DL))
-    j1 = int(round(((clon + half) - LON0) / DL))
-    i0 = max(0, min(i0, NROWS - 1)); i1 = max(i0 + 1, min(i1, NROWS))
-    j0 = max(0, min(j0, NCOLS - 1)); j1 = max(j0 + 1, min(j1, NCOLS))
-    return slice(i0, i1), slice(j0, j1)
+# MRMS per-file grids are read from the message itself (products mix the
+# 0.01-deg 7000x3500 and 0.005-deg 14000x7000 grids); see _decode_grib.
 
 
 def _resample512(sub: np.ndarray) -> np.ndarray:
@@ -127,7 +112,6 @@ class MRMSCaseAdapter:
                  start: datetime, end: datetime) -> None:
         self.start = start
         self.end = end
-        self.slices = _subdomain_slices()
         self.mmaps: dict[str, np.ndarray] = {}
         cache_dir = os.path.join(os.path.dirname(case_dir), "..", "cache",
                                  "mrms2021")
